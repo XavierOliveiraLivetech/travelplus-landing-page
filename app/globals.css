@@ -25,6 +25,13 @@
   --max: 72rem;
 }
 
+/* More side room on mid widths — content was hugging the right edge */
+@media (max-width: 1200px) {
+  :root {
+    --space: clamp(1.35rem, 4vw, 2.25rem);
+  }
+}
+
 *,
 *::before,
 *::after {

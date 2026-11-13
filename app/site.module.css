@@ -389,46 +389,6 @@
   line-height: 1.55;
 }
 
-/* ——— Steps ——— */
-.steps {
-  padding: 4.5rem 0;
-  background: var(--branco);
-}
-
-.stepList {
-  display: grid;
-  gap: 2rem;
-  margin: 2.5rem 0 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: none;
-}
-
-.stepItem {
-  max-width: 28rem;
-}
-
-.stepNumber {
-  display: inline-block;
-  font-family: var(--font-display), sans-serif;
-  font-size: var(--font-14);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--brand-orange);
-}
-
-.stepTitle {
-  margin: 0.5rem 0 0;
-  font-size: var(--font-20);
-  color: var(--brand-blue);
-}
-
-.stepBody {
-  margin: 0.5rem 0 0;
-  color: var(--ink-soft);
-  line-height: 1.55;
-}
-
 /* ——— Pricing ——— */
 .pricing {
   padding: 4.5rem 0 5rem;
@@ -708,11 +668,6 @@
 
   .headerCta {
     margin-left: 0;
-  }
-
-  .stepList {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
   }
 
   .pricingGrid {

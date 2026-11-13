@@ -1,3 +1,4 @@
+import { StepsJourney } from "@/components/StepsJourney";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -9,7 +10,6 @@ import {
   PRICING_SECTION,
   PROBLEM,
   PROOF,
-  STEPS,
   formatPlanoPrice,
   type Plano,
 } from "@/lib/site-data";
@@ -220,24 +220,7 @@ export function SiteContent() {
           </div>
         </section>
 
-        <section id="como-funciona" className={styles.steps}>
-          <div className={styles.sectionInner}>
-            <h2 className={styles.sectionTitle}>Como funciona</h2>
-            <p className={styles.sectionLead}>
-              Três passos simples para ter a plataforma a trabalhar pela sua
-              equipa.
-            </p>
-            <ol className={styles.stepList}>
-              {STEPS.map((item) => (
-                <li key={item.step} className={styles.stepItem}>
-                  <span className={styles.stepNumber}>{item.step}</span>
-                  <h3 className={styles.stepTitle}>{item.title}</h3>
-                  <p className={styles.stepBody}>{item.body}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
+        <StepsJourney />
 
         <section id="planos" className={styles.pricing}>
           <div className={styles.sectionInner}>

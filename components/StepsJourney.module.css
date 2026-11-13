@@ -1,0 +1,339 @@
+.scrollRoot {
+  position: relative;
+  /* Always content height — no tall sticky runway / white void */
+  height: auto;
+  background: var(--branco);
+  overflow-anchor: none;
+}
+
+.scrollLocked {
+  /* Active while wheel scroll drives the plane instead of the page */
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 4.5rem 0 3rem;
+  box-sizing: border-box;
+  background: var(--branco);
+}
+
+.panelFixed {
+  position: fixed;
+  /* top set inline to vertically center the section while locked */
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--branco);
+}
+
+.header {
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.stage {
+  /* Hidden below 1024px — path animation is desktop-only */
+  display: none;
+  position: relative;
+  width: min(100%, var(--max));
+  margin: 3.25rem auto 0;
+  padding-inline: var(--space);
+  box-sizing: border-box;
+  /* Tall enough for path + step copy above/below without clipping */
+  height: 20rem;
+  overflow: visible;
+  padding-bottom: 0.25rem;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.pathBase {
+  /* Invisible guide — only the progress stroke is drawn as the plane advances */
+  fill: none;
+  stroke: transparent;
+  stroke-width: 3.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pathProgress {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brand-blue) 42%, transparent);
+  stroke-width: 3.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.checkpoint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand-blue) 35%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--branco) 70%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.7);
+  will-change: transform, opacity, background;
+  transition:
+    opacity 0.35s ease,
+    background 0.35s ease,
+    transform 0.35s ease,
+    box-shadow 0.35s ease,
+    width 0.35s ease,
+    height 0.35s ease;
+}
+
+.checkpointVisible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.checkpointReached {
+  background: color-mix(in srgb, var(--brand-blue) 70%, transparent);
+}
+
+.checkpointActive {
+  width: 0.85rem;
+  height: 0.85rem;
+  background: color-mix(in srgb, var(--brand-orange) 75%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-orange) 18%, transparent);
+}
+
+.plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-orange);
+  pointer-events: none;
+  will-change: transform;
+  filter: drop-shadow(
+    0 1px 1px color-mix(in srgb, var(--brand-blue) 10%, transparent)
+  );
+}
+
+.plane svg {
+  display: block;
+  overflow: visible;
+}
+
+.steps {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.step {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(22rem, 36vw);
+  margin: 0;
+  padding: 0.35rem 0 0;
+  background: none;
+  pointer-events: none;
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.6s ease;
+  will-change: opacity, transform, filter;
+}
+
+.stepAlignStart {
+  text-align: left;
+}
+
+.stepAlignMid {
+  text-align: center;
+}
+
+.stepAlignEnd {
+  text-align: right;
+}
+
+.stepAlignEnd .stepBody {
+  margin-left: auto;
+}
+
+.stepAlignMid .stepBody {
+  margin-inline: auto;
+}
+
+.stepRevealed,
+.stepActive {
+  opacity: 1;
+  filter: none;
+}
+
+/* Only the active checkpoint copy is visible */
+.stepUpcoming {
+  opacity: 0;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.stepNumber {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--brand-orange);
+}
+
+.stepTitleText {
+  margin-left: 0.4rem;
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  font-weight: 600;
+  color: var(--brand-blue);
+}
+
+.stepHeading {
+  margin: 0 0 0.65rem;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: 1.25;
+}
+
+.stepBody {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: clamp(0.88rem, 1.3vw, 1rem);
+  line-height: 1.55;
+  max-width: 38ch;
+}
+
+.mobileList {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  margin: 2.5rem 0 0;
+  /* Extra left inset so steps sit slightly right of the section title */
+  padding: 0 var(--space) 0 calc(var(--space) + 1.75rem);
+  list-style: none;
+  box-sizing: border-box;
+}
+
+.mobileItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.75rem 1fr;
+  gap: 1.35rem;
+  padding: 0 0 2rem;
+}
+
+.mobileItem:last-child {
+  padding-bottom: 0;
+}
+
+.mobileRail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.mobileRail::before {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  bottom: -2rem;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--brand-blue) 22%, #d8d0ea);
+}
+
+.mobileItem:last-child .mobileRail::before {
+  display: none;
+}
+
+.mobileDot {
+  position: relative;
+  z-index: 1;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: var(--brand-blue);
+  box-shadow: 0 0 0 4px var(--branco);
+}
+
+.mobileCopy {
+  min-width: 0;
+  width: 100%;
+}
+
+.mobileCopy .stepBody {
+  max-width: none;
+}
+
+@media (max-width: 1023px) {
+  .panel {
+    padding: 4.5rem 0 3.25rem;
+  }
+
+  .panelFixed {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    z-index: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .mobileList {
+    /* Align with section title/lead padding */
+    padding: 0 var(--space);
+  }
+}
+
+/* Path / plane / wheel-lock journey — 1024px and up only */
+@media (min-width: 1024px) {
+  .stage {
+    display: block;
+  }
+
+  .mobileList {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step,
+  .checkpoint {
+    transition: none !important;
+    filter: none !important;
+  }
+
+  .stepUpcoming {
+    opacity: 0;
+  }
+}
