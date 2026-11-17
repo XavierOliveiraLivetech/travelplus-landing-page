@@ -1,39 +1,45 @@
 "use client";
 
 import siteStyles from "@/app/site.module.css";
+import {
+  claimPageScroll,
+  releasePageScroll,
+  requestPageSnap,
+} from "@/lib/pageScrollClaim";
 import { STEPS } from "@/lib/site-data";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FaPlaneUp } from "react-icons/fa6";
 import styles from "./StepsJourney.module.css";
 
 /**
- * Ease-in-out S-curve: horizontal at start & end, stronger climb in the middle.
- * viewBox: 0 0 2400 420 — checkpoints at equal X (start / mid / end).
+ * Fallback connector path (viewBox 0 0 2400 420).
+ * Rebuilt on measure so checkpoints sit under each step's content centre.
  */
-const PATH_D = "M 56 295 C 740 295 1720 18 2344 18";
+const PATH_D = "M 400 310 C 900 310 1500 110 2000 110";
+const PATH_Y = [310, 210, 110] as const;
 
-/** Defaults; recalculated on measure for equal X spacing across the container */
+/** Defaults; recalculated on measure from each step's horizontal centre */
 const DEFAULT_CHECKPOINTS = [0, 0.5, 1] as const;
 
-const HEADER_OFFSET_PX = 58;
-const SCROLL_SMOOTHING = 0.07;
-const SNAP_EPS = 0.0005;
+const SCROLL_SMOOTHING = 0.045;
+/** Stronger lerp on the last leg so the plane does not crawl into the finish */
+const END_SMOOTHING = 0.12;
+/** Progress from which the finish boost ramps up (last ~28% of the path) */
+const FINISH_BOOST_FROM = 0.72;
+const SNAP_EPS = 0.0008;
+const END_SNAP_EPS = 0.004;
 const FLIP_SMOOTHING = 0.12;
 const DIRECTION_EPS = 0.00015;
 const PLANE_ANGLE_OFFSET = 90;
 const VIEWBOX_W = 2400;
 const VIEWBOX_H = 420;
-/** Wheel delta needed for the full capture (plane + read margin) */
-const WHEEL_RANGE_VIEWPORTS = 1.35;
-/**
- * Plane reaches the last checkpoint at this fraction of the wheel range;
- * the remainder is a hold so the user can read before page scroll resumes.
- */
-const PLANE_END_AT = 0.72;
-/** If the section already overshot the pin by more than this, don't snap back */
-const OVERSHOOT_PX = 140;
+const STEP_LAST = STEPS.length - 1;
+const WHEEL_TOLERANCE = 16;
+/** Brief pause after the flight before releasing the section lock */
+const END_STEP_HOLD_MS = 180;
 /** Path animation + wheel lock only from this width up (tablets stay on mobile layout) */
 const DESKTOP_MIN_WIDTH_PX = 1024;
+const SNAP_ID = "como-funciona";
 
 /** Viewport top offset that vertically centers the section on screen. */
 function centerPinTop(sectionHeight: number) {
@@ -60,11 +66,24 @@ function progressAtX(path: SVGPathElement, length: number, targetX: number) {
   return clamp(((lo + hi) / 2) / length, 0, 1);
 }
 
-function buildEvenCheckpoints(path: SVGPathElement, length: number) {
-  const start = path.getPointAtLength(0).x;
-  const end = path.getPointAtLength(length).x;
-  const mid = (start + end) / 2;
-  return [0, progressAtX(path, length, mid), 1] as [number, number, number];
+/** Smooth climb through three step-centre X positions in viewBox space. */
+function buildConnectorPath(x0: number, x1: number, x2: number) {
+  const [y0, y1, y2] = PATH_Y;
+  const c01 = (x0 + x1) / 2;
+  const c12 = (x1 + x2) / 2;
+  return `M ${x0} ${y0} C ${c01} ${y0}, ${c01} ${y1}, ${x1} ${y1} C ${c12} ${y1}, ${c12} ${y2}, ${x2} ${y2}`;
+}
+
+function buildCheckpointsAtXs(
+  path: SVGPathElement,
+  length: number,
+  xs: [number, number, number],
+) {
+  return [
+    progressAtX(path, length, xs[0]),
+    progressAtX(path, length, xs[1]),
+    progressAtX(path, length, xs[2]),
+  ] as [number, number, number];
 }
 
 export function StepsJourney() {
@@ -79,8 +98,6 @@ export function StepsJourney() {
 
   const visualProgress = useRef(0);
   const scrollTarget = useRef(0);
-  /** 0–1 capture progress including the post-last-step read margin */
-  const rawProgress = useRef(0);
   const pathLength = useRef(0);
   const checkpoints = useRef<[number, number, number]>([...DEFAULT_CHECKPOINTS]);
   const reducedMotion = useRef(false);
@@ -90,23 +107,19 @@ export function StepsJourney() {
   const flipAngle = useRef(0);
   const locked = useRef(false);
   const lockScrollY = useRef(0);
-
-  const planeFromRaw = useCallback((raw: number) => {
-    return clamp(raw / PLANE_END_AT, 0, 1);
-  }, []);
-
-  const stepFromProgress = useCallback((progress: number) => {
-    const [a, b, c] = checkpoints.current;
-    if (progress >= c - 0.012) return 2;
-    if (progress >= b - 0.012) return 1;
-    if (progress >= a - 0.012) return 0;
-    return -1;
-  }, []);
+  const animatingRef = useRef(false);
+  const armedRef = useRef(true);
+  /** After the first full flight, keep the completed path/steps and never replay */
+  const journeyDoneRef = useRef(false);
+  const finishTimerRef = useRef(0);
 
   const [activeStep, setActiveStep] = useState(0);
   // Mobile-first: assume non-desktop until matchMedia runs (avoids path/lock under 1024px)
   const [isDesktop, setIsDesktop] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  /** Path animation only when desktop can animate; reduced-motion gets the static list. */
+  const showPath = isDesktop && !reduceMotion;
 
   const pathPointToTrack = useCallback((x: number, y: number) => {
     const path = pathRef.current;
@@ -134,8 +147,6 @@ export function StepsJourney() {
 
       const length = pathLength.current;
       const markers = checkpoints.current;
-      const last = markers.length - 1;
-      const trackWidth = track.clientWidth;
 
       markers.forEach((marker, index) => {
         const point = path.getPointAtLength(marker * length);
@@ -143,31 +154,16 @@ export function StepsJourney() {
         if (!local) return;
 
         const checkpoint = markersRef.current[index];
-        if (checkpoint) {
-          const reached = progress + 0.01 >= marker;
-          const onStop = Math.abs(progress - marker) < 0.028;
-          checkpoint.style.transform = `translate(${local.x}px, ${local.y}px) translate(-50%, -50%)${
-            reached ? " scale(1)" : " scale(0.7)"
-          }`;
-          checkpoint.classList.toggle(styles.checkpointVisible, reached);
-          checkpoint.classList.toggle(styles.checkpointReached, reached);
-          checkpoint.classList.toggle(styles.checkpointActive, onStop);
-        }
+        if (!checkpoint) return;
 
-        const step = stepRefs.current[index];
-        if (!step) return;
-
-        const xAlign = index === last ? "-100%" : "0%";
-        // Step 01: left edge of section; step 03: right edge of section
-        const xPos =
-          index === 0 ? 0 : index === last ? trackWidth : local.x;
-        const yAlign =
-          index === 0
-            ? "calc(-100% - 2.75rem)"
-            : index === last
-              ? "2.15rem"
-              : "1.35rem";
-        step.style.transform = `translate(${xPos}px, ${local.y}px) translate(${xAlign}, ${yAlign})`;
+        const reached = progress + 0.01 >= marker;
+        const onStop = Math.abs(progress - marker) < 0.028;
+        checkpoint.style.transform = `translate(${local.x}px, ${local.y}px) translate(-50%, -50%)${
+          reached ? " scale(1)" : " scale(0.7)"
+        }`;
+        checkpoint.classList.toggle(styles.checkpointVisible, reached);
+        checkpoint.classList.toggle(styles.checkpointReached, reached);
+        checkpoint.classList.toggle(styles.checkpointActive, onStop);
       });
     },
     [pathPointToTrack],
@@ -206,7 +202,6 @@ export function StepsJourney() {
       plane.style.transform = `translate(${local.x}px, ${local.y}px) translate(-50%, -50%) rotate(${angle}deg)`;
 
       if (progressPath) {
-        // Draw only the segment the plane has already flown
         progressPath.style.strokeDasharray = `${length}`;
         progressPath.style.strokeDashoffset = `${length - distance}`;
       }
@@ -218,7 +213,6 @@ export function StepsJourney() {
 
   const freezePageScroll = useCallback((scrollY: number) => {
     const body = document.body;
-    // Store before freezing — while fixed, window.scrollY becomes 0
     lockScrollY.current = Math.max(0, scrollY);
     body.style.position = "fixed";
     body.style.top = `-${lockScrollY.current}px`;
@@ -233,7 +227,6 @@ export function StepsJourney() {
     const html = document.documentElement;
     const y = lockScrollY.current;
 
-    // Avoid html { scroll-behavior: smooth } animating from 0 → y (looks like a jump to top)
     const prevBehavior = html.style.scrollBehavior;
     html.style.scrollBehavior = "auto";
 
@@ -258,27 +251,36 @@ export function StepsJourney() {
 
     const rect = root.getBoundingClientRect();
     const pinTop = centerPinTop(rect.height);
-    // Freeze page so the section sits in the middle of the viewport
     const targetY = window.scrollY + rect.top - pinTop;
 
     root.style.height = `${panel.offsetHeight}px`;
     panel.style.top = `${pinTop}px`;
     freezePageScroll(targetY);
     locked.current = true;
+    claimPageScroll("journey");
     setIsLocked(true);
   }, [freezePageScroll]);
 
-  const unlockSection = useCallback(() => {
-    const root = rootRef.current;
-    const panel = panelRef.current;
-    if (!root || !locked.current) return;
+  const unlockSection = useCallback(
+    (direction?: 1 | -1) => {
+      const root = rootRef.current;
+      const panel = panelRef.current;
+      if (!root || !locked.current) return;
 
-    locked.current = false;
-    setIsLocked(false);
-    root.style.height = "";
-    if (panel) panel.style.top = "";
-    unfreezePageScroll();
-  }, [unfreezePageScroll]);
+      locked.current = false;
+      armedRef.current = false;
+      animatingRef.current = false;
+      setIsLocked(false);
+      root.style.height = "";
+      if (panel) panel.style.top = "";
+      releasePageScroll("journey");
+      unfreezePageScroll();
+      if (direction) {
+        requestPageSnap(direction, SNAP_ID);
+      }
+    },
+    [unfreezePageScroll],
+  );
 
   useLayoutEffect(() => {
     const media = window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`);
@@ -286,7 +288,9 @@ export function StepsJourney() {
 
     const applyMedia = () => setIsDesktop(media.matches);
     const applyMotion = () => {
-      reducedMotion.current = motion.matches;
+      const matches = motion.matches;
+      reducedMotion.current = matches;
+      setReduceMotion(matches);
     };
 
     applyMedia();
@@ -302,132 +306,166 @@ export function StepsJourney() {
 
   useEffect(() => {
     const path = pathRef.current;
-    if (!path || !isDesktop) {
+    if (!path || !showPath) {
       unlockSection();
       return;
     }
 
     const measure = () => {
+      const track = trackRef.current;
+      const progressPath = progressPathRef.current;
+      if (!track) return;
+
+      const trackRect = track.getBoundingClientRect();
+      if (trackRect.width <= 0) return;
+
+      const xs: number[] = [];
+      for (let i = 0; i < STEPS.length; i += 1) {
+        const step = stepRefs.current[i];
+        if (!step) return;
+        const rect = step.getBoundingClientRect();
+        const centerPx = rect.left + rect.width / 2 - trackRect.left;
+        xs.push(clamp((centerPx / trackRect.width) * VIEWBOX_W, 0, VIEWBOX_W));
+      }
+      if (xs.length !== 3) return;
+
+      const d = buildConnectorPath(xs[0], xs[1], xs[2]);
+      path.setAttribute("d", d);
+      progressPath?.setAttribute("d", d);
+
       const length = path.getTotalLength();
       pathLength.current = length;
-      checkpoints.current = buildEvenCheckpoints(path, length);
+      checkpoints.current = buildCheckpointsAtXs(
+        path,
+        length,
+        xs as [number, number, number],
+      );
+
       if (locked.current && rootRef.current && panelRef.current) {
         rootRef.current.style.height = `${panelRef.current.offsetHeight}px`;
       }
     };
 
-    measure();
-    visualProgress.current = 0;
-    scrollTarget.current = 0;
-    rawProgress.current = 0;
-    activeStepRef.current = 0;
-    setActiveStep(0);
-    travelDir.current = 1;
-    flipAngle.current = 0;
-    placePlane(0, 0);
+    const progressForStep = (index: number) => {
+      const marks = checkpoints.current;
+      return marks[clamp(index, 0, marks.length - 1)] ?? 0;
+    };
 
-    const syncProgressToScrollPosition = () => {
-      const root = rootRef.current;
-      if (!root || locked.current) return;
+    const clearFinishTimer = () => {
+      window.clearTimeout(finishTimerRef.current);
+      finishTimerRef.current = 0;
+    };
 
-      const rect = root.getBoundingClientRect();
-      // Fully past the section (below) → journey complete + hold consumed
-      if (rect.bottom <= HEADER_OFFSET_PX) {
-        rawProgress.current = 1;
-        scrollTarget.current = 1;
-        visualProgress.current = 1;
-        placePlane(1, flipAngle.current);
-        return;
+    const showCompletedJourney = () => {
+      const progress = progressForStep(STEP_LAST);
+      activeStepRef.current = STEP_LAST;
+      setActiveStep(STEP_LAST);
+      visualProgress.current = progress;
+      scrollTarget.current = progress;
+      travelDir.current = 1;
+      flipAngle.current = 0;
+      animatingRef.current = false;
+      placePlane(progress, 0);
+    };
+
+    const finishJourney = () => {
+      if (journeyDoneRef.current) return;
+      journeyDoneRef.current = true;
+      clearFinishTimer();
+      finishTimerRef.current = window.setTimeout(() => {
+        finishTimerRef.current = 0;
+        if (locked.current) unlockSection();
+      }, END_STEP_HOLD_MS);
+    };
+
+    /** Sync the active step label with how far the plane has flown. */
+    const syncStepFromProgress = (progress: number) => {
+      const marks = checkpoints.current;
+      let stepIndex = 0;
+      for (let i = 0; i < marks.length; i += 1) {
+        if (progress + 0.01 >= marks[i]) stepIndex = i;
       }
-      // Fully above the section → journey at start
-      if (rect.top >= window.innerHeight) {
-        rawProgress.current = 0;
-        scrollTarget.current = 0;
-        visualProgress.current = 0;
-        placePlane(0, flipAngle.current);
+      if (activeStepRef.current !== stepIndex) {
+        activeStepRef.current = stepIndex;
+        setActiveStep(stepIndex);
       }
     };
+
+    /** Start the one-shot flight from the beginning to the last checkpoint. */
+    const startJourneyFlight = () => {
+      clearFinishTimer();
+      journeyDoneRef.current = false;
+      travelDir.current = 1;
+      flipAngle.current = 0;
+
+      if (reducedMotion.current) {
+        showCompletedJourney();
+        finishJourney();
+        return;
+      }
+
+      visualProgress.current = 0;
+      scrollTarget.current = progressForStep(STEP_LAST);
+      activeStepRef.current = 0;
+      setActiveStep(0);
+      animatingRef.current = true;
+      placePlane(0, 0);
+    };
+
+    measure();
+    animatingRef.current = false;
+    armedRef.current = true;
+    clearFinishTimer();
+
+    if (journeyDoneRef.current) {
+      showCompletedJourney();
+    } else {
+      visualProgress.current = 0;
+      scrollTarget.current = 0;
+      activeStepRef.current = 0;
+      setActiveStep(0);
+      travelDir.current = 1;
+      flipAngle.current = 0;
+      placePlane(0, 0);
+    }
 
     const onWheel = (event: WheelEvent) => {
-      const root = rootRef.current;
-      if (!root) return;
-
-      const rect = root.getBoundingClientRect();
-      const pinLine = centerPinTop(rect.height);
-      const delta = event.deltaY;
-      const raw = rawProgress.current;
-      const range = Math.max(1, window.innerHeight * WHEEL_RANGE_VIEWPORTS);
-
-      // Capture when the section reaches the vertical middle of the screen
-      const approachingDown =
-        delta > 0 &&
-        rect.top <= pinLine + 48 &&
-        rect.top > pinLine - OVERSHOOT_PX &&
-        rect.bottom > pinLine + 48;
-      const approachingUp =
-        delta < 0 &&
-        rect.top <= pinLine + 8 &&
-        rect.top > pinLine - OVERSHOOT_PX &&
-        rect.bottom > pinLine + 48;
-
-      if (!locked.current) {
-        // Fast overshoot past the pin — finish the journey, don't yank the page back
-        if (
-          delta > 0 &&
-          raw < 1 &&
-          rect.top < pinLine - OVERSHOOT_PX &&
-          rect.bottom > 0
-        ) {
-          rawProgress.current = 1;
-          scrollTarget.current = 1;
-          return;
-        }
-
-        if (approachingDown && raw < 1) {
-          event.preventDefault();
-          lockSection();
-          const nextRaw = clamp(raw + delta / range, 0, 1);
-          rawProgress.current = nextRaw;
-          scrollTarget.current = planeFromRaw(nextRaw);
-          return;
-        }
-
-        if (approachingUp && raw > 0) {
-          event.preventDefault();
-          lockSection();
-          const nextRaw = clamp(raw + delta / range, 0, 1);
-          rawProgress.current = nextRaw;
-          scrollTarget.current = planeFromRaw(nextRaw);
-        }
-        return;
-      }
-
-      // Locked: page is frozen via body fixed; wheel drives the plane + read margin
+      if (!locked.current) return;
       event.preventDefault();
       event.stopPropagation();
-      const nextRaw = clamp(raw + delta / range, 0, 1);
-      rawProgress.current = nextRaw;
-      scrollTarget.current = planeFromRaw(nextRaw);
 
-      // Release only after the read margin; never mid-path
-      if (nextRaw >= 0.999 && delta > 0 && raw < 0.999) {
-        // Reached the end on this tick — keep locked until a further nudge
-        rawProgress.current = 1;
-        return;
-      }
-      if (nextRaw >= 1 && delta > 0 && raw >= 0.999) {
-        unlockSection();
-      } else if (nextRaw <= 0 && delta < 0 && raw <= 0.001) {
-        unlockSection();
-      } else if (nextRaw <= 0.001 && delta < 0 && raw > 0.001) {
-        rawProgress.current = 0;
-      }
+      // During the one-shot flight, swallow wheel so the plane finishes alone.
+      if (!journeyDoneRef.current || animatingRef.current) return;
+
+      if (Math.abs(event.deltaY) < WHEEL_TOLERANCE) return;
+      unlockSection(event.deltaY > 0 ? 1 : -1);
     };
 
-    const onScroll = () => {
-      // While locked, body is position:fixed — no scrollTo fight / snap-back
-      if (locked.current) return;
-      syncProgressToScrollPosition();
+    const onArrive = (event: Event) => {
+      const id = (event as CustomEvent<{ id: string }>).detail?.id;
+      if (id !== SNAP_ID) return;
+
+      // Already played: keep the completed scene visible, no lock / no replay.
+      if (journeyDoneRef.current) {
+        showCompletedJourney();
+        if (locked.current) unlockSection();
+        return;
+      }
+
+      if (!locked.current) lockSection();
+      armedRef.current = false;
+      startJourneyFlight();
+      requestAnimationFrame(() => {
+        armedRef.current = true;
+      });
+    };
+
+    const onNavStep = (event: Event) => {
+      const detail = (event as CustomEvent<{ direction: 1 | -1 }>).detail;
+      if (!detail || !locked.current) return;
+      // Only allow leaving after the one-shot flight has finished.
+      if (!journeyDoneRef.current || animatingRef.current) return;
+      unlockSection(detail.direction);
     };
 
     const onResize = () => {
@@ -442,8 +480,15 @@ export function StepsJourney() {
     };
 
     window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
+    window.addEventListener("tp-section-arrive", onArrive);
+    window.addEventListener("tp-nav-step", onNavStep);
+
+    const resizeObserver = new ResizeObserver(onResize);
+    const stepsEl = stepRefs.current[0]?.parentElement;
+    if (stepsEl) resizeObserver.observe(stepsEl);
+    const trackEl = trackRef.current;
+    if (trackEl) resizeObserver.observe(trackEl);
 
     const tick = () => {
       const target = scrollTarget.current;
@@ -452,10 +497,42 @@ export function StepsJourney() {
 
       if (reducedMotion.current) {
         current = target;
+        if (animatingRef.current) {
+          animatingRef.current = false;
+          syncStepFromProgress(current);
+          if (current >= progressForStep(STEP_LAST) - SNAP_EPS) {
+            finishJourney();
+          }
+        }
       } else {
         const delta = target - current;
-        if (Math.abs(delta) < SNAP_EPS) current = target;
-        else current = lerp(current, target, SCROLL_SMOOTHING);
+        const finishing =
+          target >= progressForStep(STEP_LAST) - SNAP_EPS &&
+          current >= FINISH_BOOST_FROM;
+        const snapEps = finishing ? END_SNAP_EPS : SNAP_EPS;
+        let smoothing = SCROLL_SMOOTHING;
+        if (finishing) {
+          const t = clamp(
+            (current - FINISH_BOOST_FROM) / (1 - FINISH_BOOST_FROM),
+            0,
+            1,
+          );
+          smoothing = lerp(SCROLL_SMOOTHING, END_SMOOTHING, t * t);
+        }
+
+        if (Math.abs(delta) < snapEps) {
+          current = target;
+          if (animatingRef.current) {
+            animatingRef.current = false;
+            syncStepFromProgress(current);
+            if (current >= progressForStep(STEP_LAST) - SNAP_EPS) {
+              finishJourney();
+            }
+          }
+        } else {
+          current = lerp(current, target, smoothing);
+          syncStepFromProgress(current);
+        }
       }
 
       const motionDelta = current - previous;
@@ -474,12 +551,6 @@ export function StepsJourney() {
       visualProgress.current = current;
       placePlane(current, flipAngle.current);
 
-      const liveStep = stepFromProgress(current);
-      if (liveStep !== activeStepRef.current) {
-        activeStepRef.current = liveStep;
-        setActiveStep(liveStep);
-      }
-
       rafId.current = requestAnimationFrame(tick);
     };
 
@@ -487,22 +558,18 @@ export function StepsJourney() {
 
     return () => {
       window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("tp-section-arrive", onArrive);
+      window.removeEventListener("tp-nav-step", onNavStep);
+      resizeObserver.disconnect();
       cancelAnimationFrame(rafId.current);
+      clearFinishTimer();
       unlockSection();
     };
-  }, [
-    isDesktop,
-    placePlane,
-    stepFromProgress,
-    lockSection,
-    unlockSection,
-    planeFromRaw,
-  ]);
+  }, [showPath, placePlane, lockSection, unlockSection]);
 
   useEffect(() => {
-    if (isDesktop) return;
+    if (showPath) return;
 
     const items = Array.from(
       document.querySelectorAll<HTMLElement>("[data-mobile-step]"),
@@ -530,7 +597,7 @@ export function StepsJourney() {
 
     items.forEach((item) => observer.observe(item));
     return () => observer.disconnect();
-  }, [isDesktop]);
+  }, [showPath]);
 
   return (
     <section
@@ -541,6 +608,11 @@ export function StepsJourney() {
         .join(" ")}
       aria-labelledby="como-funciona-title"
       data-journey-locked={isLocked ? "true" : "false"}
+      data-snap-section
+      data-snap-id={SNAP_ID}
+      data-snap-align="center"
+      data-snap-interactive={showPath ? "true" : undefined}
+      data-static={!showPath ? "true" : undefined}
     >
       <div
         ref={panelRef}
@@ -548,105 +620,121 @@ export function StepsJourney() {
           .filter(Boolean)
           .join(" ")}
       >
-        <div className={`${siteStyles.sectionInner} ${styles.header}`}>
-          <h2 id="como-funciona-title" className={siteStyles.sectionTitle}>
-            Como funciona
-          </h2>
-          <p className={siteStyles.sectionLead}>
-            Três passos simples para ter a plataforma a trabalhar pela sua
-            equipa.
-          </p>
-        </div>
-
-        <div className={styles.stage} hidden={!isDesktop}>
-          <div ref={trackRef} className={styles.track}>
-            <svg
-              className={styles.svg}
-              viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
-              preserveAspectRatio="none"
-              role="img"
-              aria-label="Percurso de descolagem pelos três passos TravelPlus"
-            >
-              <path ref={pathRef} className={styles.pathBase} d={PATH_D} />
-              <path
-                ref={progressPathRef}
-                className={styles.pathProgress}
-                d={PATH_D}
-              />
-            </svg>
-
-            {DEFAULT_CHECKPOINTS.map((stop, index) => (
-              <span
-                key={`checkpoint-${stop}`}
-                ref={(node) => {
-                  markersRef.current[index] = node;
-                }}
-                className={styles.checkpoint}
-                aria-hidden
-              />
-            ))}
-
-            <div ref={planeRef} className={styles.plane} aria-hidden>
-              <FaPlaneUp size={36} color="currentColor" />
+        {showPath ? (
+          <>
+            <div className={`${siteStyles.sectionInner} ${styles.header}`}>
+              <h2 id="como-funciona-title" className={siteStyles.sectionTitle}>
+                Como funciona
+              </h2>
+              <p className={siteStyles.sectionLead}>
+                Três passos simples para ter a plataforma a trabalhar pela sua
+                equipa.
+              </p>
             </div>
 
-            <ol className={styles.steps}>
-              {STEPS.map((item, index) => {
-                const isActive = activeStep === index;
-                const last = index === STEPS.length - 1;
-                return (
-                  <li
-                    key={item.step}
+            <div className={styles.stage}>
+              <ol className={styles.steps}>
+                {STEPS.map((item, index) => {
+                  const isActive = activeStep === index;
+                  const isRevealed = index <= activeStep;
+                  return (
+                    <li
+                      key={item.step}
+                      ref={(node) => {
+                        stepRefs.current[index] = node;
+                      }}
+                      className={[
+                        styles.step,
+                        isRevealed ? styles.stepRevealed : styles.stepUpcoming,
+                        isActive ? styles.stepActive : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      <h3 className={styles.stepHeading}>
+                        <span className={styles.stepNumber}>{item.step}</span>
+                        <span className={styles.stepTitleText}>
+                          {item.title}
+                        </span>
+                      </h3>
+                      <p className={styles.stepBody}>{item.body}</p>
+                    </li>
+                  );
+                })}
+              </ol>
+
+              <div ref={trackRef} className={styles.track}>
+                <svg
+                  className={styles.svg}
+                  viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label="Percurso de descolagem pelos três passos TravelPlus"
+                >
+                  <path ref={pathRef} className={styles.pathBase} d={PATH_D} />
+                  <path
+                    ref={progressPathRef}
+                    className={styles.pathProgress}
+                    d={PATH_D}
+                  />
+                </svg>
+
+                {DEFAULT_CHECKPOINTS.map((stop, index) => (
+                  <span
+                    key={`checkpoint-${stop}`}
                     ref={(node) => {
-                      stepRefs.current[index] = node;
+                      markersRef.current[index] = node;
                     }}
-                    className={[
-                      styles.step,
-                      !last ? styles.stepAlignStart : "",
-                      last ? styles.stepAlignEnd : "",
-                      isActive ? styles.stepRevealed : styles.stepUpcoming,
-                      isActive ? styles.stepActive : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
+                    className={styles.checkpoint}
+                    aria-hidden
+                  />
+                ))}
+
+                <div ref={planeRef} className={styles.plane} aria-hidden>
+                  <FaPlaneUp size={36} color="currentColor" />
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className={`${siteStyles.sectionInner} ${styles.staticBlock}`}>
+            <div className={styles.header}>
+              <h2 id="como-funciona-title" className={siteStyles.sectionTitle}>
+                Como funciona
+              </h2>
+              <p className={siteStyles.sectionLead}>
+                Três passos simples para ter a plataforma a trabalhar pela sua
+                equipa.
+              </p>
+            </div>
+
+            <ol className={styles.mobileList}>
+              {STEPS.map((item, index) => (
+                <li
+                  key={item.step}
+                  data-mobile-step={index}
+                  className={[
+                    styles.mobileItem,
+                    index === activeStep ? styles.mobileItemActive : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <div className={styles.mobileRail}>
+                    <span className={styles.mobileDot} />
+                  </div>
+                  <div className={styles.mobileCopy}>
                     <h3 className={styles.stepHeading}>
                       <span className={styles.stepNumber}>{item.step}</span>
                       <span className={styles.stepTitleText}>{item.title}</span>
                     </h3>
                     <p className={styles.stepBody}>{item.body}</p>
-                  </li>
-                );
-              })}
+                  </div>
+                </li>
+              ))}
             </ol>
           </div>
-        </div>
-
-        <ol className={styles.mobileList} hidden={isDesktop}>
-          {STEPS.map((item, index) => (
-            <li
-              key={item.step}
-              data-mobile-step={index}
-              className={[
-                styles.mobileItem,
-                index === activeStep ? styles.mobileItemActive : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <div className={styles.mobileRail}>
-                <span className={styles.mobileDot} />
-              </div>
-              <div className={styles.mobileCopy}>
-                <h3 className={styles.stepHeading}>
-                  <span className={styles.stepNumber}>{item.step}</span>
-                  <span className={styles.stepTitleText}>{item.title}</span>
-                </h3>
-                <p className={styles.stepBody}>{item.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        )}
       </div>
     </section>
   );

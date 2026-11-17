@@ -1,0 +1,74 @@
+.nav {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .nav {
+    display: flex;
+  }
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--brand-blue) 16%, var(--linha));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--branco) 92%, transparent);
+  color: var(--brand-blue);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-blue) 10%, transparent);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--brand-blue);
+  border-color: var(--brand-blue);
+  color: var(--branco);
+  transform: translateY(-1px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav {
+    display: none;
+  }
+
+  .button {
+    transition: none;
+  }
+}

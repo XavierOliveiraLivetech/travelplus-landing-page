@@ -213,9 +213,15 @@
   font-size: var(--font-14);
 }
 
-.field span {
+.field > span:first-child {
   font-weight: 700;
   color: var(--brand-blue);
+}
+
+.fieldHint {
+  font-size: var(--font-12);
+  color: var(--ink-muted);
+  font-weight: 400;
 }
 
 .field input,
@@ -234,10 +240,25 @@
   border-color: var(--brand-orange);
 }
 
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: #b42318;
+}
+
 .field em {
   color: #b42318;
   font-style: normal;
   font-size: var(--font-12);
+}
+
+.errorList {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.errorList a {
+  color: inherit;
+  font-weight: 600;
 }
 
 .submit {
@@ -270,15 +291,34 @@
   color: #027a48;
   padding: 0.875rem 1rem;
   font-size: var(--font-14);
+  line-height: 1.5;
+}
+
+.success p {
+  margin: 0;
+}
+
+.success p + p {
+  margin-top: 0.5rem;
+}
+
+.success a {
+  color: inherit;
+  font-weight: 700;
 }
 
 .formError {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
   border-radius: var(--radius-sm);
   background: #fef3f2;
   color: #b42318;
   padding: 0.875rem 1rem;
   font-size: var(--font-14);
+}
+
+.formError:focus {
+  outline: 2px solid color-mix(in srgb, #b42318 55%, transparent);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

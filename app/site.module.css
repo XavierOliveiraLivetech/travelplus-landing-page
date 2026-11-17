@@ -4,13 +4,54 @@
   color: var(--ink);
 }
 
+.skipLink {
+  position: absolute;
+  left: var(--space);
+  top: 0.75rem;
+  z-index: 100;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--brand-orange);
+  color: var(--branco);
+  font-size: var(--font-14);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+  outline: 2px solid color-mix(in srgb, var(--branco) 80%, transparent);
+  outline-offset: 2px;
+}
+
 /* ——— Header ——— */
 .header {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 30;
-  border-bottom: 1px solid var(--linha);
+  left: 0;
+  right: 0;
+  /* Above mobile menu backdrop so the toggle stays clickable */
+  z-index: 60;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+
+.headerOnHero {
+  background: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+
+.headerSolid {
   background: var(--branco);
+  border-bottom-color: var(--linha);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-blue) 8%, transparent);
 }
 
 .headerInner {
@@ -45,16 +86,30 @@
   font-size: var(--font-14);
   font-weight: 600;
   text-decoration: none;
-  color: var(--ink-soft);
-  transition: color 0.2s ease;
+  color: var(--brand-blue);
+  transition: color var(--motion-base) var(--ease-out);
+}
+
+.headerOnHero .navLink {
+  color: var(--branco);
 }
 
 .navLink:hover {
-  color: var(--brand-blue);
+  color: var(--brand-orange);
+}
+
+.headerOnHero .navLink:hover {
+  color: color-mix(in srgb, var(--branco) 75%, transparent);
+}
+
+.navLink:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .headerCta {
-  margin-left: auto;
+  margin-left: 0.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -66,15 +121,260 @@
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
 }
 
 .headerCta:hover {
   background: var(--brand-orange-dark);
-  transform: translateY(-1px);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-orange) 32%, transparent);
 }
 
-/* ——— Hero ——— */
+.headerCta:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand-orange) 22%, transparent);
+}
+
+.headerCta:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+/* ——— Mobile FAB speed-dial ——— */
+.fabRoot {
+  --fab-duration: 320ms;
+  --fab-stagger: 55ms;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.fabRootOpen {
+  pointer-events: auto;
+}
+
+.fabBackdrop {
+  --fab-origin-x: calc(100% - 2.35rem);
+  --fab-origin-y: 2.35rem;
+  --fab-mist-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --fab-mist-duration: 720ms;
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--brand-blue) 0%, transparent);
+  backdrop-filter: blur(0px);
+  cursor: pointer;
+  pointer-events: none;
+  transition:
+    background var(--fab-mist-duration) var(--fab-mist-ease),
+    backdrop-filter var(--fab-mist-duration) var(--fab-mist-ease);
+}
+
+.fabBackdrop::before {
+  content: "";
+  position: absolute;
+  left: var(--fab-origin-x);
+  top: var(--fab-origin-y);
+  width: 240vmax;
+  height: 240vmax;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand-blue) 72%, transparent) 0%,
+    color-mix(in srgb, var(--brand-blue) 52%, transparent) 28%,
+    color-mix(in srgb, var(--brand-blue) 28%, transparent) 52%,
+    color-mix(in srgb, var(--brand-blue) 10%, transparent) 72%,
+    transparent 86%
+  );
+  filter: blur(42px);
+  opacity: 0;
+  transform: scale(0.08);
+  transform-origin: center;
+  pointer-events: none;
+  transition:
+    opacity var(--fab-mist-duration) var(--fab-mist-ease),
+    transform var(--fab-mist-duration) var(--fab-mist-ease);
+}
+
+.fabRootOpen .fabBackdrop {
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--brand-blue) 42%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.fabRootOpen .fabBackdrop::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.fabCluster {
+  position: absolute;
+  top: calc(4.25rem + env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.85rem;
+  pointer-events: none;
+}
+
+.fabMenu {
+  width: max-content;
+  max-width: min(18rem, calc(100vw - 5.5rem));
+}
+
+.fabList {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fabItem {
+  opacity: 0;
+  transform: translateY(-0.85rem) scale(0.92);
+  pointer-events: none;
+  transition:
+    opacity var(--fab-duration) var(--ease-out),
+    transform var(--fab-duration) var(--ease-out);
+  transition-delay: 0ms;
+}
+
+.fabRootOpen .fabItem {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition-delay: calc(var(--fab-i, 0) * var(--fab-stagger));
+}
+
+.fabAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--brand-blue);
+}
+
+.fabLabel {
+  font-size: var(--font-14);
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--branco);
+}
+
+.fabIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--branco);
+  color: var(--brand-blue);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-blue) 16%, transparent);
+  font-size: 1.05rem;
+}
+
+.fabToggle {
+  --fab-duration: 320ms;
+  --fab-bar-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-blue);
+  color: var(--branco);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--brand-blue) 24%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+  flex-shrink: 0;
+  transition: transform var(--motion-fast) var(--ease-out), background var(--motion-base) var(--ease-out);
+}
+
+.headerOnHero .fabToggle {
+  background: color-mix(in srgb, var(--branco) 18%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(8px);
+}
+
+.headerOnHero .fabToggle:hover {
+  background: color-mix(in srgb, var(--branco) 28%, transparent);
+}
+
+.fabToggle:hover {
+  background: var(--brand-blue-deep);
+}
+
+.fabToggle:active {
+  transform: scale(0.96);
+}
+
+.fabToggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+/* Two bars → X when open */
+.fabGlyph {
+  position: relative;
+  display: block;
+  width: 1.35rem;
+  height: 0.9rem;
+}
+
+.fabLid,
+.fabBase {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 0.16rem;
+  border-radius: 99px;
+  background: var(--branco);
+  transform-origin: center;
+  transition: transform var(--fab-duration, 320ms) var(--fab-bar-ease, var(--ease-out));
+}
+
+.fabLid {
+  transform: translateY(calc(-50% - 0.28rem)) rotate(0deg);
+}
+
+.fabBase {
+  transform: translateY(calc(-50% + 0.28rem)) rotate(0deg);
+}
+
+.fabRootOpen .fabLid,
+.fabToggleOpen .fabLid {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.fabRootOpen .fabBase,
+.fabToggleOpen .fabBase {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+/* ——— Hero (+ proof strip) ——— */
+.heroBlock {
+  display: flex;
+  flex-direction: column;
+}
+
 .hero {
   position: relative;
   min-height: min(92vh, 52rem);
@@ -111,13 +411,6 @@
   animation: rise 0.7s ease both;
 }
 
-.heroBrand {
-  width: auto;
-  height: clamp(3.5rem, 8vw, 5.5rem);
-  margin-bottom: 1.75rem;
-  object-fit: contain;
-}
-
 .heroTitle {
   margin: 0;
   max-width: 16ch;
@@ -152,8 +445,12 @@
   font-size: var(--font-14);
   font-weight: 700;
   text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease,
-    border-color 0.2s ease;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    color var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
 }
 
 .primaryButton {
@@ -163,7 +460,13 @@
 
 .primaryButton:hover {
   background: var(--brand-orange-dark);
-  transform: translateY(-1px);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-orange) 32%, transparent);
+}
+
+.primaryButton:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand-orange) 22%, transparent);
 }
 
 .secondaryButton {
@@ -175,6 +478,13 @@
 .secondaryButton:hover {
   border-color: var(--branco);
   background: color-mix(in srgb, var(--branco) 10%, transparent);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--branco) 14%, transparent);
+}
+
+.secondaryButton:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: none;
 }
 
 .ghostButton {
@@ -185,6 +495,19 @@
 
 .ghostButton:hover {
   border-color: var(--branco);
+  background: color-mix(in srgb, var(--branco) 8%, transparent);
+  transform: scale(var(--btn-hover-scale));
+}
+
+.ghostButton:active {
+  transform: scale(var(--btn-press-scale));
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.ghostButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
 }
 
 /* ——— Proof strip ——— */
@@ -396,57 +719,277 @@
   border-top: 1px solid var(--linha);
 }
 
-.pricingGrid {
-  display: grid;
-  gap: 1rem;
-  margin: 2.5rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.pricingCard,
-.pricingCardFeatured {
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem;
+.pricingDuration {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 1.5rem;
+  padding: 0.25rem;
   border: 1px solid var(--linha);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--branco);
 }
 
-.pricingCardFeatured {
+.pricingDurationBtn,
+.pricingDurationActive {
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  font-size: var(--font-14);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    color var(--motion-base) var(--ease-out);
+}
+
+.pricingDurationBtn {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.pricingDurationBtn:hover {
+  color: var(--brand-blue);
+  background: color-mix(in srgb, var(--brand-blue) 6%, transparent);
+}
+
+.pricingDurationActive {
+  background: var(--brand-blue);
+  color: var(--branco);
+}
+
+.pricingDurationBtn:focus-visible,
+.pricingDurationActive:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.pricingGrid {
+  --pricing-tab-space: 2.15rem;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  /* Shared overhead on multi-column so the featured tab clears neighbors */
+  margin: 2.5rem 0 0;
+  padding: var(--pricing-tab-space) 0 0;
+  list-style: none;
+  align-items: stretch;
+}
+
+.pricingTicket,
+.pricingTicketFeatured {
+  --ticket-notch-r: 12px;
+  --ticket-border: var(--linha);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100%;
+  list-style: none;
+  transition:
+    transform var(--motion-base) var(--ease-out),
+    filter var(--motion-base) var(--ease-out);
+}
+
+.pricingTicketFeatured {
+  --ticket-border: var(--brand-blue);
+}
+
+.pricingTicketTab {
+  position: absolute;
+  /* Fully above the ticket — bottom edge meets the card top, no overlap into content */
+  top: 0;
+  /* Inset from the left so the card border/radius stays continuous */
+  left: 0.75rem;
+  z-index: 3;
+  margin: 0;
+  padding: 0.4rem 0.9rem 0.45rem;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--brand-orange);
+  color: var(--branco);
+  font-size: var(--font-12);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateY(-100%);
+}
+
+.pricingTicketBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+  background: transparent;
+  /* drop-shadow follows masked alpha (notches); box-shadow would fill holes */
+  filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--brand-blue) 10%, transparent));
+}
+
+.pricingTicketFeatured .pricingTicketBody {
+  filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--brand-blue) 32%, transparent));
+}
+
+.pricingTicket:hover .pricingTicketBody,
+.pricingTicketFeatured:hover .pricingTicketBody {
+  filter: drop-shadow(0 10px 22px color-mix(in srgb, var(--brand-blue) 16%, transparent));
+}
+
+.pricingTicket:hover,
+.pricingTicketFeatured:hover {
+  transform: translateY(-3px);
+}
+
+.pricingTicketTop {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.35rem 1.25rem 1.15rem;
+  background: var(--branco);
+  border: 1px solid var(--ticket-border);
+  border-bottom: none;
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  -webkit-mask-image:
+    radial-gradient(
+      circle var(--ticket-notch-r) at 0 100%,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    radial-gradient(
+      circle var(--ticket-notch-r) at 100% 100%,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: source-in, source-in, source-in;
+  mask-image:
+    radial-gradient(
+      circle var(--ticket-notch-r) at 0 100%,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    radial-gradient(
+      circle var(--ticket-notch-r) at 100% 100%,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    linear-gradient(#000 0 0);
+  mask-composite: intersect, intersect;
+}
+
+.pricingTicketFeatured .pricingTicketTop {
+  border-width: 2px;
   border-color: var(--brand-blue);
   background: var(--brand-blue);
   color: var(--branco);
 }
 
-.pricingBadge {
-  margin: 0 0 0.75rem;
-  font-size: var(--font-12);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.pricingTicketPerforation {
+  position: relative;
+  z-index: 2;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.pricingTicketPerforation::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--ticket-notch-r) + 0.45rem);
+  right: calc(var(--ticket-notch-r) + 0.45rem);
+  top: 0;
+  border-top: 1.5px dashed color-mix(in srgb, var(--ink-muted) 45%, transparent);
+  transform: translateY(-50%);
+}
+
+.pricingTicketFeatured .pricingTicketPerforation::before {
+  border-top-color: color-mix(in srgb, var(--branco) 45%, transparent);
+}
+
+.pricingTicketBottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 1.15rem 1.25rem 1.35rem;
+  background: var(--branco);
+  border: 1px solid var(--ticket-border);
+  border-top: none;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  -webkit-mask-image:
+    radial-gradient(
+      circle var(--ticket-notch-r) at 0 0,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    radial-gradient(
+      circle var(--ticket-notch-r) at 100% 0,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: source-in, source-in, source-in;
+  mask-image:
+    radial-gradient(
+      circle var(--ticket-notch-r) at 0 0,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    radial-gradient(
+      circle var(--ticket-notch-r) at 100% 0,
+      transparent calc(var(--ticket-notch-r) - 0.25px),
+      #000 calc(var(--ticket-notch-r) + 0.25px)
+    ),
+    linear-gradient(#000 0 0);
+  mask-composite: intersect, intersect;
+}
+
+.pricingTicketFeatured .pricingTicketBottom {
+  border-width: 2px;
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+  color: var(--branco);
+}
+
+.pricingTicketFeatured .pricingName,
+.pricingTicketFeatured .pricingAmount {
+  color: var(--branco);
+}
+
+.pricingTicketFeatured .pricingDesc,
+.pricingTicketFeatured .pricingPeriod {
+  color: color-mix(in srgb, var(--branco) 72%, transparent);
+}
+
+.pricingTicketFeatured .pricingFeatures {
+  color: color-mix(in srgb, var(--branco) 88%, transparent);
+}
+
+.pricingTicketFeatured .pricingFeatureIcon {
   color: var(--brand-orange);
 }
 
 .pricingName {
   margin: 0;
   font-size: var(--font-20);
-}
-
-.pricingCardFeatured .pricingName {
-  color: var(--branco);
+  color: var(--ink);
 }
 
 .pricingDesc {
   margin: 0.45rem 0 0;
   font-size: var(--font-14);
   line-height: 1.45;
+  /* Reserve 2 lines so 1-line copy still matches taller cards (price + notch align) */
+  min-height: calc(2 * 1.45em);
   color: var(--ink-muted);
-}
-
-.pricingCardFeatured .pricingDesc {
-  color: color-mix(in srgb, var(--branco) 72%, transparent);
 }
 
 .pricingPrice {
@@ -458,6 +1001,7 @@
   font-size: clamp(1.6rem, 3vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.03em;
+  color: var(--ink);
 }
 
 .pricingPeriod {
@@ -466,21 +1010,31 @@
   color: var(--ink-muted);
 }
 
-.pricingCardFeatured .pricingPeriod {
-  color: color-mix(in srgb, var(--branco) 65%, transparent);
-}
-
 .pricingFeatures {
-  margin: 1.15rem 0 0;
-  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
   flex: 1;
+  list-style: none;
   font-size: var(--font-14);
-  line-height: 1.55;
+  line-height: 1.45;
   color: var(--ink-soft);
 }
 
-.pricingCardFeatured .pricingFeatures {
-  color: color-mix(in srgb, var(--branco) 82%, transparent);
+.pricingFeatureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.pricingFeatureIcon {
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-top: 0.2rem;
+  color: var(--brand-orange);
 }
 
 .pricingButton,
@@ -489,13 +1043,36 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 1.35rem;
+  min-height: 2.75rem;
+  margin-top: 1.25rem;
   padding: 0.75rem 1rem;
   border-radius: var(--radius-sm);
   font-size: var(--font-14);
   font-weight: 700;
   text-decoration: none;
-  transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    color var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pricingTicket,
+  .pricingTicketFeatured,
+  .pricingTicketBody,
+  .pricingButton,
+  .pricingButtonPrimary,
+  .pricingButtonSecondary {
+    transition: none;
+  }
+
+  .pricingTicket:hover,
+  .pricingTicketFeatured:hover {
+    transform: none;
+  }
 }
 
 .pricingButton {
@@ -507,7 +1084,13 @@
 .pricingButton:hover {
   background: var(--brand-blue);
   color: var(--branco);
-  transform: translateY(-1px);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--brand-blue) 22%, transparent);
+}
+
+.pricingButton:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: none;
 }
 
 .pricingButtonPrimary {
@@ -517,7 +1100,13 @@
 
 .pricingButtonPrimary:hover {
   background: var(--brand-orange-dark);
-  transform: translateY(-1px);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-orange) 32%, transparent);
+}
+
+.pricingButtonPrimary:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand-orange) 22%, transparent);
 }
 
 .pricingButtonSecondary {
@@ -528,9 +1117,28 @@
 
 .pricingButtonSecondary:hover {
   border-color: var(--brand-blue);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand-blue) 12%, transparent);
 }
 
-/* ——— CTA ——— */
+.pricingButtonSecondary:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: none;
+}
+
+.pricingButton:focus-visible,
+.pricingButtonPrimary:focus-visible,
+.pricingButtonSecondary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+/* ——— CTA (+ footer) ——— */
+.ctaBlock {
+  display: flex;
+  flex-direction: column;
+}
+
 .cta {
   background: var(--brand-blue);
   color: var(--branco);
@@ -608,10 +1216,17 @@
   font-weight: 600;
   text-decoration: none;
   color: var(--brand-blue);
+  transition: color var(--motion-base) var(--ease-out);
 }
 
 .footerMeta a:hover {
   color: var(--brand-orange);
+}
+
+.footerMeta a:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .footerFine {
@@ -638,11 +1253,67 @@
     animation: none;
   }
 
+  .header,
+  .skipLink,
+  .fabBackdrop,
+  .fabBackdrop::before,
+  .fabItem,
+  .fabLid,
+  .fabBase,
+  .fabToggle {
+    transition: none;
+  }
+
+  .fabRootOpen .fabBackdrop::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .fabRootOpen .fabItem {
+    transition-delay: 0ms;
+  }
+
+  .fabRootOpen .fabLid,
+  .fabToggleOpen .fabLid {
+    transform: translateY(-50%) rotate(45deg);
+  }
+
+  .fabRootOpen .fabBase,
+  .fabToggleOpen .fabBase {
+    transform: translateY(-50%) rotate(-45deg);
+  }
+
+  .headerCta,
+  .primaryButton,
+  .secondaryButton,
+  .ghostButton,
+  .pricingButton,
+  .pricingButtonPrimary,
+  .pricingButtonSecondary,
+  .pricingDurationBtn,
+  .pricingDurationActive {
+    transition:
+      background var(--motion-fast) var(--ease-out),
+      color var(--motion-fast) var(--ease-out),
+      border-color var(--motion-fast) var(--ease-out);
+  }
+
   .headerCta:hover,
+  .headerCta:active,
   .primaryButton:hover,
+  .primaryButton:active,
+  .secondaryButton:hover,
+  .secondaryButton:active,
+  .ghostButton:hover,
+  .ghostButton:active,
   .pricingButton:hover,
-  .pricingButtonPrimary:hover {
+  .pricingButton:active,
+  .pricingButtonPrimary:hover,
+  .pricingButtonPrimary:active,
+  .pricingButtonSecondary:hover,
+  .pricingButtonSecondary:active {
     transform: none;
+    box-shadow: none;
   }
 }
 
@@ -661,24 +1332,181 @@
   }
 }
 
+@media (min-width: 550px) {
+  .pricingGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 768px) {
   .nav {
     display: flex;
   }
 
   .headerCta {
-    margin-left: 0;
+    margin-left: auto;
   }
 
+  .fabToggle {
+    display: none;
+  }
+
+  .fabRoot {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .header .headerCta {
+    display: none;
+  }
+
+  .fabItem .headerCta {
+    margin-left: 0;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 549px) {
+  /*
+   * Single-column stack: do not use margin-top on the featured card —
+   * grid + item margins were collapsing and letting Standard overlap Premium.
+   * A larger row-gap clears both the absolute tab and the next plan.
+   */
   .pricingGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 0;
+    gap: 3.25rem;
+  }
+
+  .pricingTicketFeatured {
+    margin-top: 0;
+  }
+
+  .pricingTicketBody {
+    filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--brand-blue) 12%, transparent));
+  }
+
+  .pricingTicketFeatured .pricingTicketBody {
+    filter: drop-shadow(0 8px 20px color-mix(in srgb, var(--brand-blue) 28%, transparent));
   }
 }
 
 @media (min-width: 1024px) {
+  /* Full-viewport sections; proof inside heroBlock; footer inside ctaBlock */
+  .heroBlock,
+  .ctaBlock {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .heroBlock .hero {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: center;
+  }
+
+  .heroInner {
+    padding-block: clamp(4rem, 10vh, 7rem);
+  }
+
+  .heroTitle {
+    max-width: 18ch;
+  }
+
+  .heroLead {
+    max-width: min(42rem, 52%);
+  }
+
+  .heroBlock .proof {
+    flex-shrink: 0;
+  }
+
+  .proofItem {
+    padding-block: 1.5rem;
+  }
+
+  .sectionTitle {
+    max-width: 28ch;
+    font-size: clamp(1.85rem, 2.6vw, 2.6rem);
+  }
+
+  .sectionLead {
+    max-width: 48rem;
+    font-size: clamp(1.125rem, 1.35vw, 1.3rem);
+  }
+
+  .ctaBlock .cta {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .ctaInner {
+    width: 100%;
+    padding-block: clamp(3.5rem, 8vh, 6rem);
+  }
+
+  .ctaTitle {
+    max-width: 22ch;
+  }
+
+  .ctaLead {
+    max-width: 44rem;
+  }
+
+  .ctaBlock .footer {
+    flex-shrink: 0;
+  }
+
+  .problem,
+  .pricing {
+    min-height: 100vh;
+    min-height: 100dvh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: clamp(3.5rem, 7vh, 6rem);
+  }
+
   .problem .sectionInner {
-    grid-template-columns: 1fr 1.05fr;
-    gap: 3.5rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: clamp(2.5rem, 5vw, 5rem);
+    width: 100%;
+    align-items: center;
+  }
+
+  .problemCopy {
+    max-width: none;
+  }
+
+  .productMock {
+    min-height: min(52vh, 28rem);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mockBody {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(1.5rem, 2.5vw, 2.25rem);
+  }
+
+  .mockResults {
+    gap: 0.75rem;
+    margin-top: 1.35rem;
+  }
+
+  .mockRow {
+    padding: 1rem 1.15rem;
+    font-size: var(--font-16);
   }
 
   .featureItem {
@@ -687,13 +1515,63 @@
     padding: 1.75rem 0;
   }
 
+  .pricing .sectionInner {
+    width: 100%;
+  }
+
   .pricingGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(1rem, 1.5vw, 1.5rem);
+    margin-top: clamp(2rem, 4vh, 3rem);
+  }
+
+  .pricingTicketTop {
+    padding: clamp(1.35rem, 2vw, 1.75rem) clamp(1.15rem, 1.8vw, 1.5rem)
+      clamp(1.1rem, 1.6vw, 1.35rem);
+  }
+
+  .pricingTicketBottom {
+    padding: clamp(1.1rem, 1.6vw, 1.35rem) clamp(1.15rem, 1.8vw, 1.5rem)
+      clamp(1.35rem, 2vw, 1.75rem);
+  }
+
+  .pricingTicket,
+  .pricingTicketFeatured {
+    min-height: 100%;
   }
 
   .footerInner {
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-end;
+  }
+}
+
+@media (min-width: 1400px) {
+  .heroTitle {
+    max-width: 20ch;
+    font-size: clamp(2.6rem, 4.2vw, 4rem);
+  }
+
+  .heroLead {
+    max-width: min(46rem, 48%);
+    font-size: clamp(1.15rem, 1.4vw, 1.35rem);
+  }
+
+  .problem .sectionInner {
+    gap: clamp(3.5rem, 6vw, 6.5rem);
+  }
+
+  .productMock {
+    min-height: min(56vh, 32rem);
+  }
+
+  .pricingGrid {
+    gap: 1.5rem;
+  }
+
+  .ctaTitle {
+    max-width: 24ch;
+    font-size: clamp(2.1rem, 3vw, 3rem);
   }
 }

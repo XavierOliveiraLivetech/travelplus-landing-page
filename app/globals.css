@@ -23,6 +23,29 @@
 
   --space: 1.25rem;
   --max: 72rem;
+
+  /* Motion tokens — new UI feedback only; existing GSAP/CSS timings stay as-is */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-enter: 260ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+  --btn-hover-scale: 1.02;
+  --btn-press-scale: 0.97;
+}
+
+/* Wider content column on desktop */
+@media (min-width: 1024px) {
+  :root {
+    --max: 80rem;
+  }
+}
+
+@media (min-width: 1400px) {
+  :root {
+    --max: 90rem;
+    --space: clamp(1.75rem, 3vw, 3rem);
+  }
 }
 
 /* More side room on mid widths — content was hugging the right edge */
@@ -40,6 +63,17 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Section snap drives motion via GSAP — avoid fighting native smooth scroll */
+html.section-snap-active {
+  scroll-behavior: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 html,

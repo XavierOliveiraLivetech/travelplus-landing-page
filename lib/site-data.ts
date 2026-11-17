@@ -47,6 +47,10 @@ export const FEATURES = [
     title: "Gestão centralizada",
     body: "Backoffice para equipas, subscrições, sincronizações e o dia-a-dia da operação da agência.",
   },
+  {
+    title: "Área reservada do cliente",
+    body: "O cliente acompanha propostas e reservas num espaço próprio — com a marca da agência à frente.",
+  },
 ] as const;
 
 export const STEPS = [
@@ -159,4 +163,10 @@ export const DURACAO_LABELS: Record<DuracaoSubscricao, string> = {
   mensal: "Mensal",
   semestral: "Semestral",
   anual: "Anual",
+};
+
+export const DURACAO_PERIOD_SUFFIX: Record<DuracaoSubscricao, string> = {
+  mensal: "/ mês",
+  semestral: "/ semestre",
+  anual: "/ ano",
 };
