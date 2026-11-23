@@ -57,10 +57,13 @@ export function SectionNavButtons() {
     syncEnds();
     window.addEventListener("scroll", syncEnds, { passive: true });
     window.addEventListener("tp-section-arrive", syncEnds);
+    // Desktop story: the page does not scroll, the story announces its steps.
+    window.addEventListener("tp-story-change", syncEnds);
 
     return () => {
       window.removeEventListener("scroll", syncEnds);
       window.removeEventListener("tp-section-arrive", syncEnds);
+      window.removeEventListener("tp-story-change", syncEnds);
     };
   }, [visible]);
 

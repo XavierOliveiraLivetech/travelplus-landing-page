@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  claimPageScroll,
-  lockPageSnapBriefly,
-  releasePageScroll,
-} from "@/lib/pageScrollClaim";
+import { claimPageScroll, releasePageScroll } from "@/lib/pageScrollClaim";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import dynamic from "next/dynamic";
 import {
   Children,
@@ -25,11 +20,9 @@ const StoryAirliner = dynamic(
   { ssr: false },
 );
 
-gsap.registerPlugin(ScrollTrigger, ScrollToPlugin, useGSAP);
+gsap.registerPlugin(ScrollToPlugin, useGSAP);
 
 const STORY_OWNER = "scrollytelling" as const;
-/** Must match ScrollTrigger `scrub` — restored after arrow glides. */
-const STORY_SCRUB = 0.6;
 const PANEL_KEYS = [
   "hero",
   "problems",
@@ -41,23 +34,14 @@ const PANEL_KEYS = [
 type PanelKey = (typeof PANEL_KEYS)[number];
 
 /**
- * Arrow-button glide, in seconds per timeline unit.
- * One click crosses a whole section (fade out, plane, fade in, reveals).
- * Kept close to the timeline so section animations still read clearly;
- * ease (not duration) is what makes the click feel instant.
+ * Desktop story: the wheel never scrolls the page freely, it only counts ticks;
+ * once WHEEL_STEP_PX of travel builds up in one direction, the next/previous
+ * section plays on its own clock. Line-based wheels (Firefox) report lines,
+ * converted with WHEEL_LINE_PX. A lone tick is forgotten after WHEEL_RESET_MS.
  */
-const NAV_GLIDE_MIN_S = 2.2;
-const NAV_GLIDE_MAX_S = 12;
-const NAV_GLIDE_S_PER_UNIT = 0.95;
-
-/**
- * Section-to-section auto-complete (desktop story).
- * Scrolling drives the story freely; once the user has scrolled
- * STEP_TRIGGER_FRACTION of the distance to the next/previous section (capped
- * at STEP_TRIGGER_MAX_PX), the rest of the transition plays automatically.
- */
-const STEP_TRIGGER_FRACTION = 0.15;
-const STEP_TRIGGER_MAX_PX = 200;
+const WHEEL_STEP_PX = 150;
+const WHEEL_LINE_PX = 40;
+const WHEEL_RESET_MS = 600;
 /**
  * Section transitions are paced by how much story they cross (fade out,
  * plane leg, fade in, staggered reveals), in seconds per timeline unit, so
@@ -65,8 +49,8 @@ const STEP_TRIGGER_MAX_PX = 200;
  */
 const STEP_S_PER_UNIT = 0.8;
 /**
- * Bounds for one section step. Scroll auto-complete, arrow buttons and keys
- * all use the same duration and ease, so every transition feels the same.
+ * Bounds for one section step. Wheel, arrow buttons and keys all use the
+ * same duration and ease, so every transition feels the same.
  */
 const STEP_GLIDE_MIN_S = 1.6;
 const STEP_GLIDE_MAX_S = 3.2;
@@ -77,10 +61,13 @@ const STEP_GLIDE_MAX_S = 3.2;
 const STEPS_FLIGHT_SLOW = 1.4;
 /** Even pace: fade-out and fade-in both get their time. */
 const STEP_EASE = "sine.inOut";
-/** Stopped short of the trigger: glide back to the current section. */
-const SNAP_BACK_S = 0.45;
-/** Scroll silence after which a short, unfinished scroll settles back. */
-const SETTLE_IDLE_MS = 350;
+/**
+ * The browser scroll slides to the next section on its own short clock,
+ * separate from the section animations (which take STEP_GLIDE_* seconds).
+ * The stage is sticky, so this slide only moves the scrollbar.
+ */
+const SECTION_SCROLL_S = 0.6;
+const SECTION_SCROLL_EASE = "power2.inOut";
 /** Wheel silence that ends a gesture (trackpad inertia keeps firing). */
 const GESTURE_GAP_MS = 180;
 
@@ -101,7 +88,7 @@ const PROBLEMS_HOLD = 0.6;
 const MID = HERO_SEG;
 const TOTAL = HERO_SEG + PATH_LEGS + PRICING_SETTLE + CLOSING_SEG;
 
-/** Scroll progress (0–1 through the pin) for deep-link seeks. */
+/** Timeline progress (0–1) where each section rests. */
 const SEEK_PROGRESS: Record<PanelKey, number> = {
   hero: 0.02,
   problems: (MID + 0.2) / TOTAL,
@@ -208,15 +195,6 @@ const STEPS_ROUTE: Pt[] = [
 
 /** Card row used to anchor STEPS_ROUTE, in pin pixels. */
 type StepsAnchor = { left: number; right: number; top: number; height: number };
-
-/**
- * ScrollTrigger#scrubDuration exists at runtime (GSAP 3.12+) but is missing
- * from GSAP's type definitions.
- */
-function setScrubDuration(trigger: ScrollTrigger, seconds: number) {
-  (trigger as ScrollTrigger & { scrubDuration(value: number): void })
-    .scrubDuration(seconds);
-}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -423,12 +401,11 @@ export function PaperPlaneFlight({ children }: Props) {
       let sampler: PathSampler | null = null;
       const pointAt = (distance: number): Pt =>
         sampler ? sampler.pointAt(distance) : { x: 0, y: 0 };
-      let activeTrigger: ScrollTrigger | null = null;
       // Steps only show the left-to-right pass: hidden before it turns
       // right, and hidden again once that pass turns back toward the left.
       let stepsVisibleFrom = 0;
       let stepsVisibleUntil = 1;
-      /** Nose follows scroll: 1 = scrubbing forward, -1 = scrubbing back. */
+      /** Nose follows the playhead: 1 = playing forward, -1 = playing back. */
       let planeTravelDir: 1 | -1 = 1;
       let lastPlaneProgress = 0;
 
@@ -701,20 +678,11 @@ export function PaperPlaneFlight({ children }: Props) {
         }
       };
 
-      const seekToPanel = (key: PanelKey) => {
-        const st = activeTrigger;
-        if (!st) return;
-        const progress = SEEK_PROGRESS[key];
-        const y = st.start + (st.end - st.start) * progress;
-        window.scrollTo(0, y);
-        ScrollTrigger.update();
-      };
-
       const mm = gsap.matchMedia();
       mm.add(
         {
           // Wide screen + mouse/trackpad. Touch tablets in landscape scroll
-          // natively instead of fighting the pinned, scrubbed story.
+          // natively instead of the section-by-section story.
           desktop: STORY_POINTER_QUERY,
           motionOK: "(prefers-reduced-motion: no-preference)",
         },
@@ -742,14 +710,15 @@ export function PaperPlaneFlight({ children }: Props) {
           bridge.dataset.heroDark = "true";
 
           /**
-           * One scrubbed timeline for the whole page story:
+           * One timeline for the whole page story, played section by section:
            * hero exit → plane legs (problems…pricing) → closing enter.
            */
           const tl = gsap.timeline({
             defaults: { ease: "none" },
+            paused: true,
           });
 
-          // ——— Hero hierarchical exit (reverse = enter when scrubbing up)
+          // ——— Hero hierarchical exit (reverse = enter when going back up)
           const heroStep = 0.22;
           const heroDur = 0.38;
           // actions → copy → title → bg
@@ -988,7 +957,7 @@ export function PaperPlaneFlight({ children }: Props) {
           const slowedFlight = l2rSpan * SKILLS_SLOW;
           const afterStart = skillsEnterAt + slowedFlight + skillsFadeDur;
           const afterSteps = Math.max(0.05, previousFlightEnd - afterStart);
-          /** Scroll progress at the middle of the plane's pass over the steps. */
+          /** Timeline progress at the middle of the plane's pass over the steps. */
           const stepsFlightMid =
             held(skillsEnterAt + slowedFlight / 2) / pinUnits;
           tl.to(
@@ -1285,304 +1254,220 @@ export function PaperPlaneFlight({ children }: Props) {
           // fully in onwards starts PROBLEMS_HOLD later.
           tl.shiftChildren(PROBLEMS_HOLD, true, problemsHoldAt);
 
-          activeTrigger = ScrollTrigger.create({
-            trigger: bridge,
-            pin: pin,
-            scrub: STORY_SCRUB,
-            start: "top top",
-            end: () =>
-              `+=${Math.round(window.innerHeight * pinUnits * 0.62)}`,
-            animation: tl,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-            onRefresh: () => {
-              const was = flight.progress;
-              measurePath();
-              syncStepsEntrance();
-              placePlane(was);
-              // Refresh can render the timeline at other progress values
-              // (e.g. the end) to measure it; re-read the real state after.
-              requestAnimationFrame(syncPanelPointerEvents);
-            },
-            onUpdate: (self) => {
-              const index = sectionStops.reduce(
-                (best, mark, i) => (self.progress + 0.012 >= mark ? i : best),
-                0,
-              );
-              bridge.dataset.storyIndex = String(index);
-              bridge.dataset.storyCount = String(sectionStops.length);
-              bridge.dataset.activePanel = activePanelFromProgress(
-                self.progress,
-              );
-            },
-            onToggle: (self) => {
-              if (self.isActive) {
-                claimPageScroll(STORY_OWNER);
-              } else {
-                releasePageScroll(STORY_OWNER);
-                lockPageSnapBriefly(450);
-              }
-            },
-          });
+          // ——— Time-driven story ———
+          // The page keeps its real browser scroll: one viewport of height
+          // per section, with the stage stuck on screen (sticky). The scroll
+          // position only says WHICH section is showing; it never drives the
+          // animations. Moving to another section slides the scroll to that
+          // section's slot in SECTION_SCROLL_S, while the timeline plays the
+          // transition (fades, plane flight, reveals) on its own, longer clock.
+          claimPageScroll(STORY_OWNER);
 
-          requestAnimationFrame(syncPanelPointerEvents);
+          /** Index (in sectionStops) of the section the story rests on or heads to. */
+          let settled = 0;
+          const lastStop = sectionStops.length - 1;
+          let playing: gsap.core.Tween | null = null;
 
-          // Pin is active at load — claim immediately.
-          if (activeTrigger.isActive) {
-            claimPageScroll(STORY_OWNER);
-          }
-
-          const onSeek = (event: Event) => {
-            const id = (event as CustomEvent<{ id?: string }>).detail?.id;
-            const key = panelKeyFromTarget(id);
-            if (!key) return;
-            requestAnimationFrame(() => seekToPanel(key));
+          const sectionHeight = () => Math.max(1, window.innerHeight);
+          const sizeBridge = () => {
+            bridge.style.height = `${sectionStops.length * sectionHeight()}px`;
           };
-
-          const onHash = () => {
-            const hash = window.location.hash.replace(/^#/, "");
-            const key = panelKeyFromTarget(hash);
-            if (key) jumpToPanel(key);
-          };
-
-          /**
-           * Arrow controls glide to the next section slowly enough for the
-           * story (plane flight, reveals) to play out in front of the user.
-           */
-          let glide: gsap.core.Tween | null = null;
-          /** Stop the current glide is heading to — extra clicks chain from here. */
-          let glideTarget: number | null = null;
-          let chainingGlide = false;
-          const restoreStoryScrub = () => {
-            const st = activeTrigger;
-            if (!st) return;
-            // scrubDuration(0) nulls the tween; restoring recreates it so the
-            // wheel can drive the timeline again after an arrow glide.
-            setScrubDuration(st, STORY_SCRUB);
-            ScrollTrigger.update();
-          };
-
-          const glideTo = (
-            progress: number,
-            limits: { min: number; max: number; perUnit: number } = {
-              min: NAV_GLIDE_MIN_S,
-              max: NAV_GLIDE_MAX_S,
-              perUnit: NAV_GLIDE_S_PER_UNIT,
-            },
-            // Starts moving on click (no ease-in lag); soft landing only.
-            ease = "power2.out",
-          ) => {
-            const st = activeTrigger;
-            if (!st) return;
-            const target = clamp(progress, 0, 0.995);
-            const from = glideTarget ?? (st.isActive ? st.progress : 0);
-            const timelineSpan = Math.abs(target - from) * tl.duration();
-            const duration = gsap.utils.clamp(
-              limits.min,
-              limits.max,
-              timelineSpan * limits.perUnit,
+          const bridgeTop = () =>
+            bridge.getBoundingClientRect().top + window.scrollY;
+          const sectionY = (index: number) =>
+            Math.round(bridgeTop() + index * sectionHeight());
+          const indexFromScroll = () =>
+            clamp(
+              Math.round((window.scrollY - bridgeTop()) / sectionHeight()),
+              0,
+              lastStop,
             );
-            const y = st.start + (st.end - st.start) * target;
-            chainingGlide = true;
-            glide?.kill();
-            chainingGlide = false;
-            glideTarget = target;
-            // Immediate scrub keeps fades/plane locked to the guided scroll
-            // without killTweensOf(tl), which orphaned ScrollTrigger's scrub
-            // and left the mouse wheel unable to change sections.
-            setScrubDuration(st, 0);
-            glide = gsap.to(window, {
+
+          /** Scroll position we set ourselves — its scroll event is ignored. */
+          let expectedY: number | null = null;
+          /** Our own slide of the browser scroll; its scroll events are ignored. */
+          let scrollSlide: gsap.core.Tween | null = null;
+
+          type ScrollMode = "slide" | "jump" | "none";
+
+          const scrollToSection = (index: number, mode: ScrollMode = "slide") => {
+            if (mode === "none") return;
+            const y = sectionY(index);
+            scrollSlide?.kill();
+            scrollSlide = null;
+            if (Math.abs(window.scrollY - y) < 1) return;
+            expectedY = y;
+            if (mode === "jump") {
+              window.scrollTo(0, y);
+              return;
+            }
+            scrollSlide = gsap.to(window, {
               scrollTo: { y, autoKill: false },
-              duration,
-              ease,
-              overwrite: true,
+              duration: SECTION_SCROLL_S,
+              ease: SECTION_SCROLL_EASE,
               onComplete: () => {
-                glide = null;
-                glideTarget = null;
-                restoreStoryScrub();
-              },
-              onInterrupt: () => {
-                if (!chainingGlide) {
-                  glide = null;
-                  glideTarget = null;
-                  restoreStoryScrub();
-                }
+                scrollSlide = null;
               },
             });
           };
 
-          /** Index (in sectionStops) of the section the story rests on. */
-          let settled = 0;
-          const lastStop = sectionStops.length - 1;
-
-          // The hero rests at the very top of the page (its seek mark sits a
-          // little in, which made the first scroll from the top count short).
+          // The hero rests at the very start of the timeline.
           const stopProgress = (index: number) =>
             index === 0 ? 0 : sectionStops[index];
 
-          const stopY = (index: number) => {
-            const st = activeTrigger!;
-            return st.start + (st.end - st.start) * stopProgress(index);
-          };
-
-          const nearestStopByY = (y: number) =>
-            sectionStops.reduce(
-              (best, _mark, i) =>
-                Math.abs(stopY(i) - y) < Math.abs(stopY(best) - y) ? i : best,
-              0,
-            );
-
-          const glideToStop = (
-            index: number,
-            seconds: number,
-            ease: string = STEP_EASE,
-          ) => {
-            settled = index;
-            glideTo(
-              stopProgress(index),
-              { min: seconds, max: seconds, perUnit: 0 },
-              ease,
+          const publishIndex = (index: number) => {
+            const next = String(index);
+            bridge.dataset.storyCount = String(sectionStops.length);
+            if (bridge.dataset.storyIndex === next) return;
+            bridge.dataset.storyIndex = next;
+            window.dispatchEvent(
+              new CustomEvent("tp-story-change", {
+                detail: { index, count: sectionStops.length },
+              }),
             );
           };
+
+          tl.eventCallback("onUpdate", () => {
+            const panel = activePanelFromProgress(tl.progress());
+            if (bridge.dataset.activePanel !== panel) {
+              bridge.dataset.activePanel = panel;
+            }
+          });
 
           /**
-           * Time to glide from the current scroll position to stop `index`,
+           * Time to play from `from` (timeline progress) to stop `index`,
            * from the amount of story (timeline units) in between.
            */
-          const stepSeconds = (index: number, from?: number) => {
-            const st = activeTrigger!;
-            const span = st.end - st.start;
-            const start =
-              from ?? (span > 0 ? (window.scrollY - st.start) / span : 0);
+          const stepSeconds = (index: number, from = tl.progress()) => {
             const end = stopProgress(index);
-            const units = Math.abs(end - start) * tl.duration();
+            const units = Math.abs(end - from) * tl.duration();
             const seconds = gsap.utils.clamp(
               STEP_GLIDE_MIN_S,
               STEP_GLIDE_MAX_S,
               units * STEP_S_PER_UNIT,
             );
-            // Glides that cross the steps flight get extra time.
+            // Steps that cross the "Como funciona" flight get extra time.
             const crossesStepsFlight =
-              Math.min(start, end) < stepsFlightMid &&
-              Math.max(start, end) > stepsFlightMid;
+              Math.min(from, end) < stepsFlightMid &&
+              Math.max(from, end) > stepsFlightMid;
             return crossesStepsFlight ? seconds * STEPS_FLIGHT_SLOW : seconds;
           };
 
-          /** A whole step (arrows, keys) to stop `index`. */
-          const stepToStop = (index: number) =>
-            glideToStop(index, stepSeconds(index));
+          /**
+           * Play the timeline to stop `index` (instantly when seconds is 0).
+           * The browser scroll slides to that section's slot on its own short
+           * clock (or jumps, or stays put when the user's own scroll — a
+           * scrollbar drag, find-in-page… — is what got us here).
+           */
+          const playToStop = (
+            index: number,
+            seconds: number,
+            scrollMode: ScrollMode = "slide",
+            ease: string = STEP_EASE,
+          ) => {
+            const target = clamp(index, 0, lastStop);
+            settled = target;
+            publishIndex(target);
+            scrollToSection(target, scrollMode);
+            playing?.kill();
+            playing = null;
+            const time = stopProgress(target) * tl.duration();
+            if (seconds <= 0.01) {
+              tl.time(time);
+              syncPanelPointerEvents();
+              return;
+            }
+            playing = tl.tweenTo(time, {
+              duration: seconds,
+              ease,
+              onComplete: () => {
+                playing = null;
+              },
+            });
+          };
 
-          /** Arrow buttons / keys: a whole step to the next/previous section. */
+          /** One whole section forward / back (wheel, arrows, keys). */
           const stepStory = (direction: 1 | -1) => {
-            if (!activeTrigger) return false;
             const target = settled + direction;
             if (target < 0 || target > lastStop) return false;
-            stepToStop(target);
+            playToStop(target, stepSeconds(target));
             return true;
           };
 
+          /**
+           * Nav links show the panel at once while the scroll slides there;
+           * deep links / "Voltar ao site" on load jump straight to it.
+           */
+          const jumpToPanel = (key: PanelKey, scrollMode: ScrollMode = "slide") => {
+            playToStop(Math.max(PANEL_KEYS.indexOf(key), 0), 0, scrollMode);
+          };
+
+          const onSeek = (event: Event) => {
+            const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+            const key = panelKeyFromTarget(id);
+            if (key) jumpToPanel(key);
+          };
+
+          const onGoto = onSeek;
+
+          const onHash = () => {
+            const hash = window.location.hash.replace(/^#/, "");
+            const key = panelKeyFromTarget(hash);
+            if (key) jumpToPanel(key, "jump");
+          };
+
           const onNavStep = (event: Event) => {
-            if (!activeTrigger) return;
             const detail = (event as CustomEvent<{ direction: 1 | -1 }>)
               .detail;
             if (!detail) return;
-
             event.stopImmediatePropagation();
             stepStory(detail.direction);
           };
 
-          /** True while the page scroll sits inside the pinned story. */
-          const inStory = () => {
-            const st = activeTrigger;
-            if (!st) return false;
-            const y = window.scrollY;
-            return y >= st.start - 2 && y <= st.end + 2;
-          };
-
           /**
-           * Free scroll drives the story as before. Once the user has scrolled
-           * STEP_TRIGGER of the way from the current section towards the
-           * next/previous one, the rest of the transition plays on its own and
-           * lands on that section. Stopping short of the trigger glides back,
-           * so the page never rests between two sections.
+           * The wheel only counts ticks. Once WHEEL_STEP_PX of travel has
+           * built up in one direction, the next/previous section plays on
+           * its own. While it plays — and for the rest of that gesture
+           * (trackpad inertia keeps firing for ~1s) — the wheel is ignored.
            */
-          let idleTimer = 0;
-          let pointerDown = false;
-          /** Set when an auto-glide starts; ends once the wheel goes quiet. */
-          let gestureLocked = false;
+          let wheelAccum = 0;
           let lastWheelAt = 0;
+          let gestureLocked = false;
 
-          const settleBack = () => {
-            if (glide || pointerDown || !inStory()) return;
-            if (Math.abs(window.scrollY - stopY(settled)) > 2) {
-              glideToStop(settled, SNAP_BACK_S);
-            }
-          };
-
-          const onScroll = () => {
-            window.clearTimeout(idleTimer);
-            if (!activeTrigger || glide || !inStory()) return;
-
-            const y = window.scrollY;
-            // Jumped past the neighbouring sections (scrollbar drag, nav
-            // link, find-in-page…): rest on whichever section is closest.
-            const low = stopY(Math.max(settled - 1, 0));
-            const high = stopY(Math.min(settled + 1, lastStop));
-            if (y < low - 4 || y > high + 4) {
-              settled = nearestStopByY(y);
-            }
-
-            const fromY = stopY(settled);
-            const moved = y - fromY;
-            const target = settled + (moved > 0 ? 1 : -1);
-            if (Math.abs(moved) > 2 && target >= 0 && target <= lastStop) {
-              const gap = Math.abs(stopY(target) - fromY);
-              const trigger = Math.min(
-                gap * STEP_TRIGGER_FRACTION,
-                STEP_TRIGGER_MAX_PX,
-              );
-              if (Math.abs(moved) >= trigger) {
-                // Same glide as the arrow buttons: the duration of the whole
-                // step (from the section we left) and the same ease.
-                gestureLocked = true;
-                glideToStop(target, stepSeconds(target, stopProgress(settled)));
-                return;
-              }
-            }
-
-            idleTimer = window.setTimeout(settleBack, SETTLE_IDLE_MS);
-          };
-
-          /**
-           * While an auto-glide plays, the wheel must not fight it; trackpad
-           * inertia keeps firing for ~1s, so the rest of that gesture is
-           * swallowed until the wheel goes quiet for GESTURE_GAP_MS.
-           */
           const onWheel = (event: WheelEvent) => {
             if (event.ctrlKey) return; // pinch / browser zoom
-            if (!inStory()) return;
             // Horizontal swipes belong to carousels (hero highlights).
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+            // The wheel never scrolls the page freely: it only steps sections.
+            event.preventDefault();
 
             const now = performance.now();
-            const quiet = now - lastWheelAt > GESTURE_GAP_MS;
+            const gap = now - lastWheelAt;
             lastWheelAt = now;
-            if (glide || (gestureLocked && !quiet)) {
-              event.preventDefault();
+            if (gap > GESTURE_GAP_MS) gestureLocked = false;
+            if (gap > WHEEL_RESET_MS) wheelAccum = 0;
+            if (playing || gestureLocked) {
+              wheelAccum = 0;
               return;
             }
-            gestureLocked = false;
-          };
 
-          const onPointerDown = () => {
-            pointerDown = true;
-          };
-          const onPointerUp = () => {
-            if (!pointerDown) return;
-            pointerDown = false;
-            // Scrollbar drag released between sections: settle.
-            window.clearTimeout(idleTimer);
-            idleTimer = window.setTimeout(settleBack, SETTLE_IDLE_MS);
+            const delta =
+              event.deltaMode === 1
+                ? event.deltaY * WHEEL_LINE_PX
+                : event.deltaMode === 2
+                  ? event.deltaY * window.innerHeight
+                  : event.deltaY;
+            if (delta === 0) return;
+            if (wheelAccum !== 0 && Math.sign(delta) !== Math.sign(wheelAccum)) {
+              wheelAccum = 0;
+            }
+            wheelAccum += delta;
+            if (Math.abs(wheelAccum) < WHEEL_STEP_PX) return;
+
+            const direction = wheelAccum > 0 ? 1 : -1;
+            wheelAccum = 0;
+            gestureLocked = true;
+            stepStory(direction);
           };
 
           const onKey = (event: KeyboardEvent) => {
@@ -1597,7 +1482,6 @@ export function PaperPlaneFlight({ children }: Props) {
             ) {
               return;
             }
-            if (!inStory()) return;
 
             let direction: 1 | -1 | 0 = 0;
             if (["ArrowDown", "PageDown"].includes(event.key)) direction = 1;
@@ -1605,11 +1489,11 @@ export function PaperPlaneFlight({ children }: Props) {
             else if (event.key === " ") direction = event.shiftKey ? -1 : 1;
             else if (event.key === "Home") {
               event.preventDefault();
-              stepToStop(0);
+              playToStop(0, stepSeconds(0));
               return;
             } else if (event.key === "End") {
               event.preventDefault();
-              stepToStop(lastStop);
+              playToStop(lastStop, stepSeconds(lastStop));
               return;
             }
             if (!direction) return;
@@ -1619,52 +1503,66 @@ export function PaperPlaneFlight({ children }: Props) {
             }
 
             event.preventDefault();
-            if (event.repeat && glide) return;
+            if (event.repeat && playing) return;
             stepStory(direction);
           };
 
           /**
-           * Jump straight to a panel. The scrub is switched off for the jump so
-           * the timeline lands on the target at once instead of easing through
-           * (and briefly showing) every panel in between.
+           * Scroll the story did not cause (scrollbar drag, find-in-page,
+           * middle-click autoscroll): show the section that slot belongs to.
            */
-          const jumpToPanel = (key: PanelKey) => {
-            const st = activeTrigger;
-            if (!st) return;
-            chainingGlide = true;
-            glide?.kill();
-            chainingGlide = false;
-            glide = null;
-            glideTarget = null;
-            setScrubDuration(st, 0);
-            settled = Math.max(PANEL_KEYS.indexOf(key), 0);
-            seekToPanel(key);
-            restoreStoryScrub();
+          const onScroll = () => {
+            if (scrollSlide) return;
+            const y = window.scrollY;
+            if (expectedY !== null && Math.abs(y - expectedY) < 2) return;
+            expectedY = null;
+            const index = indexFromScroll();
+            if (index === settled) return;
+            playToStop(index, stepSeconds(index), "none");
           };
 
-          /** Nav links (header/footer/menu) jump to a panel instantly. */
-          const onGoto = (event: Event) => {
-            const id = (event as CustomEvent<{ id?: string }>).detail?.id;
-            const key = panelKeyFromTarget(id);
-            if (!key) return;
-            jumpToPanel(key);
+          /** Scrollbar released between two slots: rest on the section shown. */
+          const onPointerUp = () => {
+            if (Math.abs(window.scrollY - sectionY(settled)) > 2) {
+              scrollToSection(settled);
+            }
           };
+
+          /** Re-anchor the plane route and the section slots to the new layout. */
+          let resizeFrame = 0;
+          const onResize = () => {
+            cancelAnimationFrame(resizeFrame);
+            resizeFrame = requestAnimationFrame(() => {
+              const was = flight.progress;
+              sizeBridge();
+              scrollToSection(settled, "jump");
+              measurePath();
+              syncStepsEntrance();
+              placePlane(was);
+              syncPanelPointerEvents();
+            });
+          };
+
+          sizeBridge();
+          tl.progress(0);
+          publishIndex(0);
+          // Reload / back-navigation may restore a scroll position: start on
+          // the section that slot belongs to.
+          playToStop(indexFromScroll(), 0, "jump");
+          requestAnimationFrame(syncPanelPointerEvents);
 
           window.addEventListener("tp-section-arrive", onSeek);
           window.addEventListener("tp-story-goto", onGoto);
           window.addEventListener("hashchange", onHash);
           window.addEventListener("tp-nav-step", onNavStep, true);
-          // Capture + non-passive: must preventDefault before native scroll
-          // (and before SectionSnap, which stands down inside the story).
           window.addEventListener("wheel", onWheel, {
             passive: false,
             capture: true,
           });
           window.addEventListener("scroll", onScroll, { passive: true });
-          window.addEventListener("pointerdown", onPointerDown, true);
           window.addEventListener("pointerup", onPointerUp, true);
           window.addEventListener("keydown", onKey);
-          settled = nearestStopByY(window.scrollY);
+          window.addEventListener("resize", onResize);
           if (window.location.hash) {
             requestAnimationFrame(onHash);
           }
@@ -1676,18 +1574,22 @@ export function PaperPlaneFlight({ children }: Props) {
             window.removeEventListener("tp-nav-step", onNavStep, true);
             window.removeEventListener("wheel", onWheel, true);
             window.removeEventListener("scroll", onScroll);
-            window.removeEventListener("pointerdown", onPointerDown, true);
             window.removeEventListener("pointerup", onPointerUp, true);
             window.removeEventListener("keydown", onKey);
-            window.clearTimeout(idleTimer);
-            glide?.kill();
+            window.removeEventListener("resize", onResize);
+            cancelAnimationFrame(resizeFrame);
+            playing?.kill();
+            playing = null;
+            scrollSlide?.kill();
+            scrollSlide = null;
             releasePageScroll(STORY_OWNER);
-            activeTrigger?.kill();
-            activeTrigger = null;
+            bridge.style.height = "";
             tl.kill();
             delete bridge.dataset.flightActive;
             delete bridge.dataset.activePanel;
             delete bridge.dataset.heroDark;
+            delete bridge.dataset.storyIndex;
+            delete bridge.dataset.storyCount;
             setPlaneMounted(false);
             plane.style.opacity = "0";
             plane.style.transform = "";

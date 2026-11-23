@@ -24,7 +24,11 @@
 
 /* Desktop story: one pinned viewport, stacked panels crossfade */
 @media (min-width: 1024px) {
+  /* The stage sticks to the viewport while the page scrolls past one
+     viewport-tall slot per section (bridge height set by PaperPlaneFlight). */
   .bridge[data-flight-active] .pin {
+    position: sticky;
+    top: 0;
     box-sizing: border-box;
     height: 100vh;
     height: 100dvh;
