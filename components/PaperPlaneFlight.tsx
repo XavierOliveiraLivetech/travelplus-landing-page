@@ -29,7 +29,7 @@ gsap.registerPlugin(ScrollTrigger, ScrollToPlugin, useGSAP);
 
 const STORY_OWNER = "scrollytelling" as const;
 /** Must match ScrollTrigger `scrub` — restored after arrow glides. */
-const STORY_SCRUB = 1.35;
+const STORY_SCRUB = 0.6;
 const PANEL_KEYS = [
   "hero",
   "problems",
@@ -49,6 +49,40 @@ type PanelKey = (typeof PANEL_KEYS)[number];
 const NAV_GLIDE_MIN_S = 2.2;
 const NAV_GLIDE_MAX_S = 12;
 const NAV_GLIDE_S_PER_UNIT = 0.95;
+
+/**
+ * Section-to-section auto-complete (desktop story).
+ * Scrolling drives the story freely; once the user has scrolled
+ * STEP_TRIGGER_FRACTION of the distance to the next/previous section (capped
+ * at STEP_TRIGGER_MAX_PX), the rest of the transition plays automatically.
+ */
+const STEP_TRIGGER_FRACTION = 0.15;
+const STEP_TRIGGER_MAX_PX = 200;
+/**
+ * Section transitions are paced by how much story they cross (fade out,
+ * plane leg, fade in, staggered reveals), in seconds per timeline unit, so
+ * every fade stays readable. A flat duration squeezed long sections.
+ */
+const STEP_S_PER_UNIT = 0.8;
+/**
+ * Bounds for one section step. Scroll auto-complete, arrow buttons and keys
+ * all use the same duration and ease, so every transition feels the same.
+ */
+const STEP_GLIDE_MIN_S = 1.6;
+const STEP_GLIDE_MAX_S = 3.2;
+/**
+ * Extra time for the step that carries the plane across the "Como funciona"
+ * cards, so the flight (and the cards it reveals) reads more calmly.
+ */
+const STEPS_FLIGHT_SLOW = 1.4;
+/** Even pace: fade-out and fade-in both get their time. */
+const STEP_EASE = "sine.inOut";
+/** Stopped short of the trigger: glide back to the current section. */
+const SNAP_BACK_S = 0.45;
+/** Scroll silence after which a short, unfinished scroll settles back. */
+const SETTLE_IDLE_MS = 350;
+/** Wheel silence that ends a gesture (trackpad inertia keeps firing). */
+const GESTURE_GAP_MS = 180;
 
 const LEG = 1;
 const PATH_LEGS = 7;
@@ -954,6 +988,9 @@ export function PaperPlaneFlight({ children }: Props) {
           const slowedFlight = l2rSpan * SKILLS_SLOW;
           const afterStart = skillsEnterAt + slowedFlight + skillsFadeDur;
           const afterSteps = Math.max(0.05, previousFlightEnd - afterStart);
+          /** Scroll progress at the middle of the plane's pass over the steps. */
+          const stepsFlightMid =
+            held(skillsEnterAt + slowedFlight / 2) / pinUnits;
           tl.to(
             flight,
             {
@@ -1332,6 +1369,8 @@ export function PaperPlaneFlight({ children }: Props) {
               max: NAV_GLIDE_MAX_S,
               perUnit: NAV_GLIDE_S_PER_UNIT,
             },
+            // Starts moving on click (no ease-in lag); soft landing only.
+            ease = "power2.out",
           ) => {
             const st = activeTrigger;
             if (!st) return;
@@ -1355,8 +1394,7 @@ export function PaperPlaneFlight({ children }: Props) {
             glide = gsap.to(window, {
               scrollTo: { y, autoKill: false },
               duration,
-              // Starts moving on click (no ease-in lag); soft landing only.
-              ease: "power2.out",
+              ease,
               overwrite: true,
               onComplete: () => {
                 glide = null;
@@ -1373,30 +1411,216 @@ export function PaperPlaneFlight({ children }: Props) {
             });
           };
 
+          /** Index (in sectionStops) of the section the story rests on. */
+          let settled = 0;
+          const lastStop = sectionStops.length - 1;
+
+          // The hero rests at the very top of the page (its seek mark sits a
+          // little in, which made the first scroll from the top count short).
+          const stopProgress = (index: number) =>
+            index === 0 ? 0 : sectionStops[index];
+
+          const stopY = (index: number) => {
+            const st = activeTrigger!;
+            return st.start + (st.end - st.start) * stopProgress(index);
+          };
+
+          const nearestStopByY = (y: number) =>
+            sectionStops.reduce(
+              (best, _mark, i) =>
+                Math.abs(stopY(i) - y) < Math.abs(stopY(best) - y) ? i : best,
+              0,
+            );
+
+          const glideToStop = (
+            index: number,
+            seconds: number,
+            ease: string = STEP_EASE,
+          ) => {
+            settled = index;
+            glideTo(
+              stopProgress(index),
+              { min: seconds, max: seconds, perUnit: 0 },
+              ease,
+            );
+          };
+
+          /**
+           * Time to glide from the current scroll position to stop `index`,
+           * from the amount of story (timeline units) in between.
+           */
+          const stepSeconds = (index: number, from?: number) => {
+            const st = activeTrigger!;
+            const span = st.end - st.start;
+            const start =
+              from ?? (span > 0 ? (window.scrollY - st.start) / span : 0);
+            const end = stopProgress(index);
+            const units = Math.abs(end - start) * tl.duration();
+            const seconds = gsap.utils.clamp(
+              STEP_GLIDE_MIN_S,
+              STEP_GLIDE_MAX_S,
+              units * STEP_S_PER_UNIT,
+            );
+            // Glides that cross the steps flight get extra time.
+            const crossesStepsFlight =
+              Math.min(start, end) < stepsFlightMid &&
+              Math.max(start, end) > stepsFlightMid;
+            return crossesStepsFlight ? seconds * STEPS_FLIGHT_SLOW : seconds;
+          };
+
+          /** A whole step (arrows, keys) to stop `index`. */
+          const stepToStop = (index: number) =>
+            glideToStop(index, stepSeconds(index));
+
+          /** Arrow buttons / keys: a whole step to the next/previous section. */
+          const stepStory = (direction: 1 | -1) => {
+            if (!activeTrigger) return false;
+            const target = settled + direction;
+            if (target < 0 || target > lastStop) return false;
+            stepToStop(target);
+            return true;
+          };
+
           const onNavStep = (event: Event) => {
-            const st = activeTrigger;
-            if (!st) return;
+            if (!activeTrigger) return;
             const detail = (event as CustomEvent<{ direction: 1 | -1 }>)
               .detail;
             if (!detail) return;
 
             event.stopImmediatePropagation();
-            // Mid-glide, step from where we are heading, not where we are.
-            const progress =
-              glideTarget ?? (st.isActive ? st.progress : 1);
-            const epsilon = 0.02;
+            stepStory(detail.direction);
+          };
 
-            if (detail.direction > 0) {
-              const next = sectionStops.find((mark) => mark > progress + epsilon);
-              if (next == null) return;
-              glideTo(next);
+          /** True while the page scroll sits inside the pinned story. */
+          const inStory = () => {
+            const st = activeTrigger;
+            if (!st) return false;
+            const y = window.scrollY;
+            return y >= st.start - 2 && y <= st.end + 2;
+          };
+
+          /**
+           * Free scroll drives the story as before. Once the user has scrolled
+           * STEP_TRIGGER of the way from the current section towards the
+           * next/previous one, the rest of the transition plays on its own and
+           * lands on that section. Stopping short of the trigger glides back,
+           * so the page never rests between two sections.
+           */
+          let idleTimer = 0;
+          let pointerDown = false;
+          /** Set when an auto-glide starts; ends once the wheel goes quiet. */
+          let gestureLocked = false;
+          let lastWheelAt = 0;
+
+          const settleBack = () => {
+            if (glide || pointerDown || !inStory()) return;
+            if (Math.abs(window.scrollY - stopY(settled)) > 2) {
+              glideToStop(settled, SNAP_BACK_S);
+            }
+          };
+
+          const onScroll = () => {
+            window.clearTimeout(idleTimer);
+            if (!activeTrigger || glide || !inStory()) return;
+
+            const y = window.scrollY;
+            // Jumped past the neighbouring sections (scrollbar drag, nav
+            // link, find-in-page…): rest on whichever section is closest.
+            const low = stopY(Math.max(settled - 1, 0));
+            const high = stopY(Math.min(settled + 1, lastStop));
+            if (y < low - 4 || y > high + 4) {
+              settled = nearestStopByY(y);
+            }
+
+            const fromY = stopY(settled);
+            const moved = y - fromY;
+            const target = settled + (moved > 0 ? 1 : -1);
+            if (Math.abs(moved) > 2 && target >= 0 && target <= lastStop) {
+              const gap = Math.abs(stopY(target) - fromY);
+              const trigger = Math.min(
+                gap * STEP_TRIGGER_FRACTION,
+                STEP_TRIGGER_MAX_PX,
+              );
+              if (Math.abs(moved) >= trigger) {
+                // Same glide as the arrow buttons: the duration of the whole
+                // step (from the section we left) and the same ease.
+                gestureLocked = true;
+                glideToStop(target, stepSeconds(target, stopProgress(settled)));
+                return;
+              }
+            }
+
+            idleTimer = window.setTimeout(settleBack, SETTLE_IDLE_MS);
+          };
+
+          /**
+           * While an auto-glide plays, the wheel must not fight it; trackpad
+           * inertia keeps firing for ~1s, so the rest of that gesture is
+           * swallowed until the wheel goes quiet for GESTURE_GAP_MS.
+           */
+          const onWheel = (event: WheelEvent) => {
+            if (event.ctrlKey) return; // pinch / browser zoom
+            if (!inStory()) return;
+            // Horizontal swipes belong to carousels (hero highlights).
+            if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+
+            const now = performance.now();
+            const quiet = now - lastWheelAt > GESTURE_GAP_MS;
+            lastWheelAt = now;
+            if (glide || (gestureLocked && !quiet)) {
+              event.preventDefault();
+              return;
+            }
+            gestureLocked = false;
+          };
+
+          const onPointerDown = () => {
+            pointerDown = true;
+          };
+          const onPointerUp = () => {
+            if (!pointerDown) return;
+            pointerDown = false;
+            // Scrollbar drag released between sections: settle.
+            window.clearTimeout(idleTimer);
+            idleTimer = window.setTimeout(settleBack, SETTLE_IDLE_MS);
+          };
+
+          const onKey = (event: KeyboardEvent) => {
+            if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+              return;
+            }
+            const el = event.target as HTMLElement | null;
+            if (
+              el?.closest?.(
+                "input, textarea, select, [contenteditable=''], [contenteditable='true']",
+              )
+            ) {
+              return;
+            }
+            if (!inStory()) return;
+
+            let direction: 1 | -1 | 0 = 0;
+            if (["ArrowDown", "PageDown"].includes(event.key)) direction = 1;
+            else if (["ArrowUp", "PageUp"].includes(event.key)) direction = -1;
+            else if (event.key === " ") direction = event.shiftKey ? -1 : 1;
+            else if (event.key === "Home") {
+              event.preventDefault();
+              stepToStop(0);
+              return;
+            } else if (event.key === "End") {
+              event.preventDefault();
+              stepToStop(lastStop);
+              return;
+            }
+            if (!direction) return;
+            // Space on a focused button/link activates it, not the page.
+            if (event.key === " " && el?.closest?.("button, a, [role='button']")) {
               return;
             }
 
-            const prev = [...sectionStops]
-              .reverse()
-              .find((mark) => mark < progress - epsilon);
-            glideTo(prev ?? sectionStops[0]);
+            event.preventDefault();
+            if (event.repeat && glide) return;
+            stepStory(direction);
           };
 
           /**
@@ -1413,6 +1637,7 @@ export function PaperPlaneFlight({ children }: Props) {
             glide = null;
             glideTarget = null;
             setScrubDuration(st, 0);
+            settled = Math.max(PANEL_KEYS.indexOf(key), 0);
             seekToPanel(key);
             restoreStoryScrub();
           };
@@ -1429,6 +1654,17 @@ export function PaperPlaneFlight({ children }: Props) {
           window.addEventListener("tp-story-goto", onGoto);
           window.addEventListener("hashchange", onHash);
           window.addEventListener("tp-nav-step", onNavStep, true);
+          // Capture + non-passive: must preventDefault before native scroll
+          // (and before SectionSnap, which stands down inside the story).
+          window.addEventListener("wheel", onWheel, {
+            passive: false,
+            capture: true,
+          });
+          window.addEventListener("scroll", onScroll, { passive: true });
+          window.addEventListener("pointerdown", onPointerDown, true);
+          window.addEventListener("pointerup", onPointerUp, true);
+          window.addEventListener("keydown", onKey);
+          settled = nearestStopByY(window.scrollY);
           if (window.location.hash) {
             requestAnimationFrame(onHash);
           }
@@ -1438,6 +1674,12 @@ export function PaperPlaneFlight({ children }: Props) {
             window.removeEventListener("tp-story-goto", onGoto);
             window.removeEventListener("hashchange", onHash);
             window.removeEventListener("tp-nav-step", onNavStep, true);
+            window.removeEventListener("wheel", onWheel, true);
+            window.removeEventListener("scroll", onScroll);
+            window.removeEventListener("pointerdown", onPointerDown, true);
+            window.removeEventListener("pointerup", onPointerUp, true);
+            window.removeEventListener("keydown", onKey);
+            window.clearTimeout(idleTimer);
             glide?.kill();
             releasePageScroll(STORY_OWNER);
             activeTrigger?.kill();
