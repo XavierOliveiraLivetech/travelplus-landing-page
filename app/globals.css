@@ -24,14 +24,92 @@
   --space: 1.25rem;
   --max: 72rem;
 
+  /*
+   * Vertical rhythm shared by every content section (problem, features,
+   * steps, pricing, CTA). Each section pads top and bottom by the same
+   * amount, so the space between any two neighbours is always 2 × this.
+   * Overridden below for wider screens and for the desktop story panels.
+   */
+  --section-pad-y: 4rem; /* phones: 8rem between neighbours */
+  --section-head-gap: 2rem;
+
+  /*
+    Mock-UI kit — shared by the product demo (PlatformFlow) and the
+    "Como funciona" cards (StepVisuals) so both read as the same product.
+  */
+  --ui-violet: var(--brand-blue);
+  --ui-violet-soft: color-mix(in srgb, var(--brand-blue) 7%, var(--branco));
+  --ui-orange-soft: color-mix(in srgb, var(--brand-orange) 12%, var(--branco));
+  --ui-success: #1f9d6b;
+  --ui-success-soft: color-mix(in srgb, var(--ui-success) 12%, var(--branco));
+  --ui-line: color-mix(in srgb, var(--brand-blue) 8%, var(--linha));
+  --ui-field-bg: color-mix(in srgb, var(--brand-blue) 3%, var(--branco));
+  /* Selected state: one solid, light tint of the brand purple */
+  --ui-selected-bg: color-mix(in srgb, var(--brand-blue) 6%, var(--branco));
+  --ui-selected-line: color-mix(in srgb, var(--brand-blue) 18%, var(--linha));
+  --ui-card-shadow:
+    0 1px 2px rgb(24 0 72 / 0.04),
+    0 18px 40px -18px rgb(24 0 72 / 0.22);
+  --ui-radius-card: 1rem;
+  --ui-radius-box: 0.7rem;
+  --ui-radius-ctl: 0.55rem;
+
   /* Motion tokens — new UI feedback only; existing GSAP/CSS timings stay as-is */
   --motion-fast: 150ms;
   --motion-base: 200ms;
-  --motion-enter: 260ms;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
   --btn-hover-scale: 1.02;
   --btn-press-scale: 0.97;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --section-pad-y: 4rem; /* never tighter than phones */
+    --section-head-gap: 2.5rem;
+  }
+}
+
+/* Wide screens without the story (touch laptops/tablets, reduced motion):
+   sections stack in normal flow */
+@media (min-width: 1024px) {
+  :root {
+    --section-pad-y: 4rem;
+  }
+}
+
+/*
+ * Desktop story (keep in sync with STORY_POINTER_QUERY in lib/motionQueries.ts):
+ * each section is a full-viewport panel that crossfades in place, so the
+ * padding is only an inset inside the panel — the same for every panel.
+ */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :root {
+    --section-pad-y: clamp(4rem, 8vh, 6rem);
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 780px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :root {
+    --section-pad-y: clamp(3rem, 6vh, 4.5rem);
+  }
+}
+
+/*
+ * Reduced motion: no story panels, so sections stack in normal flow and the
+ * pad is the only thing separating them — give tablets and desktops more
+ * air. Phones (< 640px) keep the default 4rem.
+ */
+@media (min-width: 640px) and (prefers-reduced-motion: reduce) {
+  :root {
+    --section-pad-y: 5rem;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  :root {
+    --section-pad-y: clamp(5.5rem, 10vh, 7.5rem);
+  }
 }
 
 /* Wider content column on desktop */
@@ -61,18 +139,80 @@
   box-sizing: border-box;
 }
 
-html {
-  scroll-behavior: smooth;
+/*
+ * Fluid root scale for large viewports (ultra-wide monitors, 4K, or browser
+ * zoom below 100%). The whole layout is in rem, so growing the root font-size
+ * grows the content column, type and spacing together — the page keeps the
+ * same proportions it has on a 1920×~940 viewport instead of shrinking into
+ * a small island in the middle.
+ *
+ * - 100vw / 120  → 16px at 1920px wide
+ * - 100vh / 58.75 → 16px at ~940px tall (typical desktop browser viewport)
+ * Taking the smaller of the two keeps full-height sections fitting on short,
+ * very wide screens (e.g. 3440×1440). max(100%, …) never goes below the
+ * user's default font size, so zooming in and accessibility settings still work.
+ * Media queries use the initial font size, so breakpoints are unaffected.
+ */
+@media (min-width: 1024px) {
+  html {
+    font-size: max(100%, min(100vw / 120, 100vh / 58.75));
+  }
 }
 
-/* Section snap drives motion via GSAP — avoid fighting native smooth scroll */
+/*
+ * Section snap and the story arrows drive scroll from GSAP, frame by frame.
+ * Smooth scrolling must not win — ScrollTrigger also writes an inline
+ * "smooth" after refresh, and a normal rule loses to that inline style.
+ * The jump skips fade and plane tweens. !important keeps those tweens visible.
+ */
 html.section-snap-active {
-  scroll-behavior: auto;
+  scroll-behavior: auto !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  /*
+   * Safety net for visitors who ask for less motion: every CSS animation and
+   * transition settles on its final frame at once (0.01ms instead of 0 so
+   * transitionend/animationend still fire). Components set their own static
+   * end states on top of this; the full motion is untouched for everyone else.
+   */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Scroll reveals for phones / touch tablets (components/ScrollReveal.tsx).
+ * !important: some revealed items carry inline GSAP styles (opacity: 1)
+ * from the desktop story setup. A short rise, no blur — blur filters are
+ * expensive on mobile GPUs.
+ */
+html [data-reveal-pending] {
+  opacity: 0 !important;
+  transform: translate3d(0, 1rem, 0) !important;
+}
+
+html [data-reveal-anim] {
+  transition:
+    opacity 0.6s var(--ease-out) var(--reveal-delay, 0ms),
+    transform 0.6s var(--ease-out) var(--reveal-delay, 0ms) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html [data-reveal-pending] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 
@@ -80,6 +220,15 @@ html,
 body {
   margin: 0;
   padding: 0;
+  max-width: 100%;
+}
+
+/*
+ * Kill document-level horizontal scroll. Use clip (not hidden) so we do not
+ * force overflow-y to auto — that would break position:sticky descendants.
+ */
+html {
+  overflow-x: clip;
 }
 
 body {
@@ -89,6 +238,7 @@ body {
   color: var(--ink);
   background: var(--branco);
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
 }
 
 h1,
@@ -121,4 +271,55 @@ select {
 ::selection {
   background: color-mix(in srgb, var(--brand-orange) 28%, transparent);
   color: var(--brand-blue);
+}
+
+/* ── Page transitions (View Transitions API via React <ViewTransition>) ──
+   Home → Aderir: home slides out left, aderir slides in from the right.
+   Aderir → Home: aderir slides out right, home slides in from the left. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(*) {
+  animation-duration: 0.55s;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+::view-transition-new(.page-slide-from-right) {
+  animation: page-in-from-right 0.55s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+::view-transition-old(.page-slide-to-left) {
+  animation: page-out-to-left 0.55s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+::view-transition-new(.page-slide-from-left) {
+  animation: page-in-from-left 0.55s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+::view-transition-old(.page-slide-to-right) {
+  animation: page-out-to-right 0.55s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+@keyframes page-in-from-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes page-out-to-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-30%); opacity: 0.4; }
+}
+@keyframes page-in-from-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes page-out-to-right {
+  from { transform: translateX(0); }
+  to { transform: translateX(30%); opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
 }

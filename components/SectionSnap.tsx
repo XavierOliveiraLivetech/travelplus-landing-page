@@ -3,27 +3,22 @@
 import {
   isPageScrollClaimed,
   isPageSnapLocked,
+  nearestIndex,
   notifySnapArrive,
+  snapTargets,
 } from "@/lib/pageScrollClaim";
+import { useStoryMode } from "@/lib/usePrefersReducedMotion";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { Observer } from "gsap/Observer";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
-import { useEffect, useState } from "react";
 
 gsap.registerPlugin(Observer, ScrollToPlugin, useGSAP);
 
-const DESKTOP_MIN_WIDTH_PX = 1024;
-const SNAP_DURATION = 0.75;
+const SNAP_DURATION = 0.7;
+/** Arrow buttons move slower than the wheel so the transition is visible. */
+const NAV_BUTTON_DURATION = 1.4;
 const WHEEL_TOLERANCE = 48;
-
-type SnapDetail = { direction: 1 | -1; fromId?: string };
-
-function snapTargets(): HTMLElement[] {
-  return Array.from(
-    document.querySelectorAll<HTMLElement>("[data-snap-section]"),
-  );
-}
 
 function scrollTopFor(el: HTMLElement) {
   const align = el.dataset.snapAlign === "center" ? "center" : "start";
@@ -40,51 +35,17 @@ function scrollTopFor(el: HTMLElement) {
   return Math.max(0, absoluteTop);
 }
 
-function nearestIndex(sections: HTMLElement[]) {
-  const probe = window.scrollY + window.innerHeight * 0.45;
-  let best = 0;
-  let bestDist = Number.POSITIVE_INFINITY;
-
-  sections.forEach((el, i) => {
-    const top = window.scrollY + el.getBoundingClientRect().top;
-    const mid = top + el.offsetHeight / 2;
-    const dist = Math.abs(mid - probe);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = i;
-    }
-  });
-
-  return best;
-}
-
-function indexForId(sections: HTMLElement[], id: string) {
-  return sections.findIndex(
-    (el) => el.dataset.snapId === id || el.id === id,
-  );
+/** The story is one tall snap target. A step must not rewind it to the top. */
+function insideStory(el: HTMLElement | undefined) {
+  if (!el?.hasAttribute("data-story-bridge")) return false;
+  if (!el.hasAttribute("data-flight-active")) return false;
+  const top = scrollTopFor(el);
+  const bottom = top + el.offsetHeight - window.innerHeight;
+  return window.scrollY > top + 24 && window.scrollY <= bottom + 4;
 }
 
 export function SectionSnap() {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const desktopMq = window.matchMedia(
-      `(min-width: ${DESKTOP_MIN_WIDTH_PX}px)`,
-    );
-    const motionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    const sync = () => {
-      setEnabled(desktopMq.matches && !motionMq.matches);
-    };
-
-    sync();
-    desktopMq.addEventListener("change", sync);
-    motionMq.addEventListener("change", sync);
-    return () => {
-      desktopMq.removeEventListener("change", sync);
-      motionMq.removeEventListener("change", sync);
-    };
-  }, []);
+  const enabled = useStoryMode();
 
   useGSAP(
     () => {
@@ -98,7 +59,7 @@ export function SectionSnap() {
       let index = nearestIndex(snapTargets());
       let animating = false;
 
-      const goTo = (nextIndex: number) => {
+      const goTo = (nextIndex: number, duration = SNAP_DURATION) => {
         const sections = snapTargets();
         if (sections.length === 0 || animating) return;
 
@@ -106,24 +67,37 @@ export function SectionSnap() {
         const target = sections[clamped];
         if (!target) return;
 
+        const targetY = scrollTopFor(target);
+        const alreadyThere =
+          clamped === index && Math.abs(window.scrollY - targetY) < 6;
+
+        const toId = target.dataset.snapId ?? target.id;
+
         index = clamped;
+
+        if (alreadyThere || duration <= 0.01) {
+          animating = false;
+          window.scrollTo(0, targetY);
+          if (toId) notifySnapArrive(toId);
+          return;
+        }
+
         animating = true;
 
         gsap.to(window, {
-          scrollTo: { y: scrollTopFor(target), autoKill: false },
-          duration: SNAP_DURATION,
-          ease: "power2.inOut",
+          scrollTo: { y: targetY, autoKill: false },
+          duration,
+          ease: "sine.inOut",
           overwrite: true,
           onComplete: () => {
             animating = false;
             index = clamped;
-            const id = target.dataset.snapId ?? target.id;
-            if (id) notifySnapArrive(id);
+            if (toId) notifySnapArrive(toId);
           },
         });
       };
 
-      const step = (direction: 1 | -1) => {
+      const step = (direction: 1 | -1, duration = SNAP_DURATION) => {
         if (animating || isPageScrollClaimed() || isPageSnapLocked()) return;
 
         const sections = snapTargets();
@@ -137,6 +111,9 @@ export function SectionSnap() {
 
         const el = sections[index];
 
+        // Already inside the pinned story: the wheel should scrub, not snap home.
+        if (insideStory(el)) return;
+
         // Interactive sections own the wheel after arrive claims scroll.
         if (el?.dataset.snapInteractive === "true") {
           const id = el.dataset.snapId ?? el.id;
@@ -145,12 +122,14 @@ export function SectionSnap() {
           if (isPageScrollClaimed()) return;
         }
 
-        goTo(index + direction);
+        goTo(index + direction, duration);
       };
 
       const observer = Observer.create({
         target: window,
-        type: "wheel,touch",
+        // Wheel only: touch screens scroll natively. (Observer reports touch
+        // drags with the opposite sign, which snapped touch users backwards.)
+        type: "wheel",
         tolerance: WHEEL_TOLERANCE,
         preventDefault: false,
         onChangeY: (self) => {
@@ -169,23 +148,11 @@ export function SectionSnap() {
         // Interactive owners handle their own preventDefault.
         if (isPageScrollClaimed()) return;
 
+        const sections = snapTargets();
+        if (insideStory(sections[index] ?? sections[0])) return;
+
         // Hold native scroll on desktop — sections step via Observer.
         event.preventDefault();
-      };
-
-      const onExternalSnap = (event: Event) => {
-        const detail = (event as CustomEvent<SnapDetail>).detail;
-        if (!detail) return;
-
-        const sections = snapTargets();
-        let from = index;
-
-        if (detail.fromId) {
-          const found = indexForId(sections, detail.fromId);
-          if (found >= 0) from = found;
-        }
-
-        goTo(from + detail.direction);
       };
 
       const onNavStep = (event: Event) => {
@@ -193,7 +160,7 @@ export function SectionSnap() {
         if (!detail) return;
         // Interactive owners handle this when they have claimed the page scroll.
         if (isPageScrollClaimed()) return;
-        step(detail.direction);
+        step(detail.direction, NAV_BUTTON_DURATION);
       };
 
       const onScroll = () => {
@@ -222,7 +189,21 @@ export function SectionSnap() {
         if (targetIndex < 0) return;
 
         event.preventDefault();
-        goTo(targetIndex);
+        const target = sections[targetIndex];
+        // Deep links inside the scrollytelling bridge (e.g. #como-funciona)
+        // need the story playhead, not the bridge top. Gliding to the bridge
+        // top here would override the story's seek and land back on the hero.
+        if (
+          target?.hasAttribute("data-story-bridge") &&
+          target.hasAttribute("data-flight-active")
+        ) {
+          window.dispatchEvent(
+            new CustomEvent("tp-story-goto", { detail: { id } }),
+          );
+          return;
+        }
+        // Nav links jump straight there — no glide past the sections between.
+        goTo(targetIndex, 0);
       };
 
       window.addEventListener("wheel", onWheelCapture, {
@@ -230,7 +211,6 @@ export function SectionSnap() {
         capture: true,
       });
       window.addEventListener("scroll", onScroll, { passive: true });
-      window.addEventListener("tp-section-snap", onExternalSnap);
       window.addEventListener("tp-nav-step", onNavStep);
       document.addEventListener("click", onNavClick);
 
@@ -239,7 +219,6 @@ export function SectionSnap() {
         html.classList.remove("section-snap-active");
         window.removeEventListener("wheel", onWheelCapture, true);
         window.removeEventListener("scroll", onScroll);
-        window.removeEventListener("tp-section-snap", onExternalSnap);
         window.removeEventListener("tp-nav-step", onNavStep);
         document.removeEventListener("click", onNavClick);
         observer.kill();

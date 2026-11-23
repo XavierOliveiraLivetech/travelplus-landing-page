@@ -1,0 +1,141 @@
+.bridge {
+  position: relative;
+  background: var(--papel);
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+.pin {
+  position: relative;
+  background: var(--papel);
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+}
+
+.panel {
+  position: relative;
+  width: 100%;
+}
+
+/* Desktop story: one pinned viewport, stacked panels crossfade */
+@media (min-width: 1024px) {
+  .bridge[data-flight-active] .pin {
+    box-sizing: border-box;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--papel);
+  }
+
+  .bridge[data-flight-active] .stage {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .bridge[data-flight-active] .panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    will-change: opacity, transform, filter;
+  }
+
+  .bridge[data-flight-active] .panel > :global(section) {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 100%;
+    border: none;
+    background: transparent;
+  }
+
+  /* Hero + closing fill the pin as composed blocks (not vertically centered shells). */
+  .bridge[data-flight-active] .panel[data-story-panel="hero"],
+  .bridge[data-flight-active] .panel[data-story-panel="closing"] {
+    justify-content: flex-start;
+  }
+
+  .bridge[data-flight-active] .panel[data-story-panel="hero"] > :global(section),
+  .bridge[data-flight-active] .panel[data-story-panel="closing"] > :global(section) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    height: 100%;
+  }
+
+  .bridge[data-flight-active] :global([data-feature-item]),
+  .bridge[data-flight-active] :global([data-step-item]),
+  .bridge[data-flight-active] :global([data-pricing-item]),
+  .bridge[data-flight-active] :global([data-pricing-shell]) {
+    opacity: 0;
+    will-change: opacity, transform, filter;
+  }
+
+  .bridge[data-flight-active] :global([data-story-layer]) {
+    will-change: opacity, transform, filter;
+  }
+}
+
+.planeLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Match the on-screen size of the airliner orbiting the features globe. */
+  width: calc(clamp(13rem, 32vh, 19rem) * 0.95);
+  height: calc(clamp(13rem, 32vh, 19rem) * 0.684);
+  margin: 0;
+  opacity: 0;
+  transform-origin: 65% 50%;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.planeCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+@media (max-width: 1023px) {
+  .planeLayer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planeLayer {
+    display: none;
+  }
+
+  .panel {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    pointer-events: auto !important;
+  }
+
+  .panel :global([data-story-layer]),
+  .panel :global([data-pricing-shell]),
+  .panel :global([data-pricing-item]) {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

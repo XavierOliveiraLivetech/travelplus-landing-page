@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
+import { HistorySlideTransition } from "@/components/HistorySlideTransition";
 
 const display = Outfit({
   variable: "--font-display",
@@ -30,7 +31,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-PT" className={`${display.variable} ${body.variable}`}>
-      <body>{children}</body>
+      {/* Browser extensions (e.g. ColorZilla's cz-shortcut-listen) add attributes
+          to <body> before hydration; ignore those mismatches on this element only. */}
+      <body suppressHydrationWarning>
+        <HistorySlideTransition />
+        {children}
+      </body>
     </html>
   );
 }

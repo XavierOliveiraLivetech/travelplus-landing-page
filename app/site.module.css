@@ -2,6 +2,8 @@
   min-height: 100vh;
   background: var(--branco);
   color: var(--ink);
+  /* Decorative bleed (glows, orbit canvas) must not create horizontal scroll */
+  overflow-x: clip;
 }
 
 .skipLink {
@@ -108,9 +110,13 @@
   border-radius: 2px;
 }
 
+/* Mobile-first: hidden until the desktop nav shows (min-width: 768px), so
+   it shares the exact same switch as the nav / menu toggle — no gap at
+   fractional widths like 767.5px where both used to appear. Below that,
+   "Pedir adesão" lives only in the mobile menu. */
 .headerCta {
   margin-left: 0.75rem;
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   padding: 0.625rem 1.1rem;
@@ -143,10 +149,14 @@
   outline-offset: 3px;
 }
 
-/* ——— Mobile FAB speed-dial ——— */
+/* ——— Mobile navigation sheet ——— */
 .fabRoot {
-  --fab-duration: 320ms;
-  --fab-stagger: 55ms;
+  /* Same size + right inset as .fabToggle inside .headerInner */
+  --fab-size: 2.75rem;
+  --fab-right: max(var(--space), env(safe-area-inset-right, 0px));
+  --mnav-duration: 460ms;
+  --mnav-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --mnav-stagger: 45ms;
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -158,132 +168,244 @@
 }
 
 .fabBackdrop {
-  --fab-origin-x: calc(100% - 2.35rem);
-  --fab-origin-y: 2.35rem;
-  --fab-mist-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --fab-mist-duration: 720ms;
   position: absolute;
   inset: 0;
   margin: 0;
   padding: 0;
   border: 0;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--brand-blue) 0%, transparent);
-  backdrop-filter: blur(0px);
+  background:
+    radial-gradient(
+      120% 70% at 100% 0%,
+      color-mix(in srgb, var(--brand-orange) 14%, transparent) 0%,
+      transparent 55%
+    ),
+    color-mix(in srgb, var(--brand-blue-deep) 62%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  opacity: 0;
   cursor: pointer;
   pointer-events: none;
-  transition:
-    background var(--fab-mist-duration) var(--fab-mist-ease),
-    backdrop-filter var(--fab-mist-duration) var(--fab-mist-ease);
-}
-
-.fabBackdrop::before {
-  content: "";
-  position: absolute;
-  left: var(--fab-origin-x);
-  top: var(--fab-origin-y);
-  width: 240vmax;
-  height: 240vmax;
-  translate: -50% -50%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--brand-blue) 72%, transparent) 0%,
-    color-mix(in srgb, var(--brand-blue) 52%, transparent) 28%,
-    color-mix(in srgb, var(--brand-blue) 28%, transparent) 52%,
-    color-mix(in srgb, var(--brand-blue) 10%, transparent) 72%,
-    transparent 86%
-  );
-  filter: blur(42px);
-  opacity: 0;
-  transform: scale(0.08);
-  transform-origin: center;
-  pointer-events: none;
-  transition:
-    opacity var(--fab-mist-duration) var(--fab-mist-ease),
-    transform var(--fab-mist-duration) var(--fab-mist-ease);
+  transition: opacity var(--mnav-duration) var(--mnav-ease);
 }
 
 .fabRootOpen .fabBackdrop {
-  pointer-events: auto;
-  background: color-mix(in srgb, var(--brand-blue) 42%, transparent);
-  backdrop-filter: blur(8px);
-}
-
-.fabRootOpen .fabBackdrop::before {
   opacity: 1;
-  transform: scale(1);
+  pointer-events: auto;
 }
 
-.fabCluster {
+.mnavSheet {
   position: absolute;
-  top: calc(4.25rem + env(safe-area-inset-top, 0px));
-  right: max(1rem, env(safe-area-inset-right, 0px));
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.85rem;
-  pointer-events: none;
+  top: calc(0.75rem + var(--fab-size) + 0.75rem + env(safe-area-inset-top, 0px));
+  /* Compact card anchored under the toggle — never full-bleed */
+  right: var(--fab-right);
+  width: min(20rem, calc(100vw - var(--fab-right) - max(0.75rem, env(safe-area-inset-left, 0px))));
+  max-height: calc(100svh - 5.25rem - env(safe-area-inset-top, 0px) - 0.75rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.6rem;
+  border-radius: 1.5rem;
+  background: var(--branco);
+  border: 1px solid color-mix(in srgb, var(--branco) 60%, var(--linha));
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--brand-blue-deep) 10%, transparent),
+    0 28px 64px -12px color-mix(in srgb, var(--brand-blue-deep) 55%, transparent);
+  transform-origin: calc(100% - var(--fab-size) / 2) -1rem;
+  opacity: 0;
+  transform: translateY(-0.75rem) scale(0.96);
+  visibility: hidden;
+  transition:
+    opacity 260ms var(--ease-out),
+    transform var(--mnav-duration) var(--mnav-ease),
+    visibility 0s linear var(--mnav-duration);
 }
 
-.fabMenu {
-  width: max-content;
-  max-width: min(18rem, calc(100vw - 5.5rem));
+.fabRootOpen .mnavSheet {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+  transition:
+    opacity 260ms var(--ease-out),
+    transform var(--mnav-duration) var(--mnav-ease),
+    visibility 0s;
 }
 
-.fabList {
+.mnavList {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 0.75rem;
+  gap: 0.15rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.fabItem {
+.mnavItem {
   opacity: 0;
-  transform: translateY(-0.85rem) scale(0.92);
-  pointer-events: none;
+  transform: translateY(-0.4rem);
   transition:
-    opacity var(--fab-duration) var(--ease-out),
-    transform var(--fab-duration) var(--ease-out);
-  transition-delay: 0ms;
+    opacity 220ms var(--ease-out),
+    transform 220ms var(--ease-out);
 }
 
-.fabRootOpen .fabItem {
+.fabRootOpen .mnavItem {
   opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-  transition-delay: calc(var(--fab-i, 0) * var(--fab-stagger));
+  transform: translateY(0);
+  transition:
+    opacity 380ms var(--ease-out),
+    transform var(--mnav-duration) var(--mnav-ease);
+  transition-delay: calc(90ms + var(--mnav-i, 0) * var(--mnav-stagger));
 }
 
-.fabAction {
-  display: inline-flex;
+.mnavLink {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
+  gap: 0.9rem;
+  min-height: 3.5rem;
+  padding: 0.7rem 0.75rem 0.7rem 1rem;
+  border-radius: 1rem;
   color: var(--brand-blue);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
 }
 
-.fabLabel {
+.mnavLink:hover {
+  background: var(--ui-violet-soft);
+}
+
+.mnavLink:active {
+  transform: scale(0.985);
+}
+
+.mnavLink:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.mnavLinkActive {
+  background: var(--ui-violet-soft);
+}
+
+.mnavLinkActive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 1.5rem;
+  translate: 0 -50%;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand-orange);
+}
+
+.mnavText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.mnavLabel {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.mnavHint {
+  overflow: hidden;
   font-size: var(--font-14);
-  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--branco);
 }
 
-.fabIconBtn {
+.mnavArrow {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 999px;
-  background: var(--branco);
+  border: 1px solid var(--ui-line);
   color: var(--brand-blue);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-blue) 16%, transparent);
-  font-size: 1.05rem;
+  font-size: 0.8rem;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out),
+    color var(--motion-base) var(--ease-out),
+    transform var(--motion-base) var(--ease-out);
+}
+
+.mnavLink:hover .mnavArrow,
+.mnavLinkActive .mnavArrow {
+  background: var(--brand-blue);
+  border-color: var(--brand-blue);
+  color: var(--branco);
+}
+
+.mnavLink:hover .mnavArrow {
+  transform: translateX(2px);
+}
+
+.mnavCta {
+  /* Match the link rows' content box: text starts at 1rem, arrows end at 0.75rem */
+  margin: 0.5rem 0.75rem 0.25rem 1rem;
+}
+
+/* Inset separator — shorter than the card so it doesn't touch the edges */
+.mnavCta::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 0 0 0.75rem;
+  background: var(--ui-line);
+}
+
+.mnavCtaButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0 1.1rem;
+  border-radius: 0.8rem;
+  background: var(--brand-orange);
+  color: var(--branco);
+  font-size: var(--font-16);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  transition:
+    background var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.mnavCtaButton svg {
+  font-size: 0.85rem;
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.mnavCtaButton:hover {
+  background: var(--brand-orange-dark);
+}
+
+.mnavCtaButton:hover svg {
+  transform: translateX(3px);
+}
+
+.mnavCtaButton:active {
+  transform: scale(var(--btn-press-scale));
+}
+
+.mnavCtaButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
 }
 
 .fabToggle {
@@ -292,8 +414,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: var(--fab-size, 2.75rem);
+  height: var(--fab-size, 2.75rem);
   margin: 0 0 0 auto;
   padding: 0;
   border: 0;
@@ -369,17 +491,23 @@
   transform: translateY(-50%) rotate(-45deg);
 }
 
-/* ——— Hero (+ proof strip) ——— */
+/* ——— Hero ——— */
+/* Full-viewport hero on every device.
+   svh = height with the mobile browser bars visible, so the hero never
+   jumps when the address bar collapses; vh is the fallback. */
 .heroBlock {
+  --hero-header: 4.5rem; /* fixed header height to clear */
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
 }
 
 .hero {
   position: relative;
-  min-height: min(92vh, 52rem);
+  flex: 1 1 auto;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   overflow: hidden;
   color: var(--branco);
 }
@@ -407,14 +535,17 @@
   width: 100%;
   max-width: var(--max);
   margin-inline: auto;
-  padding: 5rem var(--space) 4rem;
+  /* Top clears the fixed header; both ends breathe with the viewport height */
+  padding: calc(var(--hero-header) + clamp(1rem, 4svh, 3rem)) var(--space)
+    clamp(2rem, 6svh, 4rem);
   animation: rise 0.7s ease both;
 }
 
 .heroTitle {
   margin: 0;
   max-width: 16ch;
-  font-size: clamp(2.1rem, 5.5vw, 3.6rem);
+  /* Scales with width, capped by height so short screens never overflow */
+  font-size: clamp(2rem, min(7vw, 6.2svh), 3.6rem);
   font-weight: 600;
   color: var(--branco);
 }
@@ -434,9 +565,20 @@
   margin-top: 2rem;
 }
 
+/* Side-by-side buttons (> 500px): equal-width columns sized by the widest
+   button, so "Aderir" and "Ver planos" always match. Any min-width set on
+   "Aderir" below therefore widens both. (≤ 500px they stack full width.) */
+@media (min-width: 501px) {
+  .heroActions {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    width: fit-content;
+  }
+}
+
 .primaryButton,
-.secondaryButton,
-.ghostButton {
+.secondaryButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -469,6 +611,13 @@
   box-shadow: 0 2px 8px color-mix(in srgb, var(--brand-orange) 22%, transparent);
 }
 
+/* Hero "Aderir": flat on every device and state — no glow */
+.heroActions .primaryButton,
+.heroActions .primaryButton:hover,
+.heroActions .primaryButton:active {
+  box-shadow: none;
+}
+
 .secondaryButton {
   border: 1px solid color-mix(in srgb, var(--branco) 45%, transparent);
   background: transparent;
@@ -487,68 +636,15 @@
   box-shadow: none;
 }
 
-.ghostButton {
-  border: 1px solid color-mix(in srgb, var(--branco) 35%, transparent);
-  background: transparent;
-  color: var(--branco);
-}
-
-.ghostButton:hover {
-  border-color: var(--branco);
-  background: color-mix(in srgb, var(--branco) 8%, transparent);
-  transform: scale(var(--btn-hover-scale));
-}
-
-.ghostButton:active {
-  transform: scale(var(--btn-press-scale));
-}
-
 .primaryButton:focus-visible,
-.secondaryButton:focus-visible,
-.ghostButton:focus-visible {
+.secondaryButton:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
   outline-offset: 3px;
 }
 
-/* ——— Proof strip ——— */
-.proof {
-  border-bottom: 1px solid var(--linha);
-  background: var(--papel);
-}
-
-.proofList {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  max-width: var(--max);
-  margin: 0 auto;
-  padding: 0;
-  list-style: none;
-}
-
-.proofItem {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 1.25rem var(--space);
-  border-bottom: 1px solid var(--linha);
-  animation: rise 0.55s ease both;
-}
-
-.proofItem:last-child {
-  border-bottom: 0;
-}
-
-.proofValue {
-  font-family: var(--font-display), sans-serif;
-  font-size: var(--font-18);
-  font-weight: 600;
-  color: var(--brand-blue);
-}
-
-.proofLabel {
-  font-size: var(--font-14);
-  color: var(--ink-muted);
+/* Highlights carousel lives in components/HeroHighlights */
+.heroCopy {
+  min-width: 0;
 }
 
 /* ——— Shared sections ——— */
@@ -560,7 +656,6 @@
 
 .sectionTitle {
   margin: 0;
-  max-width: 22ch;
   font-size: clamp(1.65rem, 3.2vw, 2.35rem);
   color: var(--brand-blue);
 }
@@ -573,155 +668,67 @@
   line-height: 1.55;
 }
 
-/* ——— Problem + product mock ——— */
+/* ——— Problem + platform demo ——— */
 .problem {
-  padding: 4.5rem 0;
-  background: var(--branco);
+  padding: var(--section-pad-y) 0;
+  background: transparent;
+  overflow-x: clip;
 }
 
 .problem .sectionInner {
   display: grid;
-  gap: 2.5rem;
+  gap: var(--section-head-gap);
   align-items: center;
 }
 
+/* Phones & tablets: the hero is full-bleed with no bottom padding, so the
+   first section supplies both halves of the usual 2 × --section-pad-y gap */
+@media (max-width: 1023px) {
+  .problem {
+    padding-top: calc(var(--section-pad-y) * 2);
+  }
+}
 .problemCopy {
   max-width: 36rem;
 }
 
-.productMock {
-  border: 1px solid var(--linha);
-  border-radius: var(--radius-lg);
-  background: var(--branco);
-  overflow: hidden;
-  animation: rise 0.7s 0.15s ease both;
-}
-
-.mockBar {
-  display: flex;
-  gap: 0.4rem;
-  padding: 0.75rem 1rem;
-  background: var(--brand-blue);
-}
-
-.mockBar span {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--branco) 35%, transparent);
-}
-
-.mockBody {
-  padding: 1.25rem 1.35rem 1.5rem;
-  background: var(--papel);
-}
-
-.mockLabel {
-  margin: 0;
-  font-size: var(--font-12);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
-.mockFields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
-}
-
-.mockFields span {
-  padding: 0.45rem 0.7rem;
-  border: 1px solid var(--linha);
-  border-radius: var(--radius-sm);
-  background: var(--branco);
-  font-size: var(--font-14);
-  color: var(--ink-soft);
-}
-
-.mockResults {
-  display: grid;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.mockRow {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.35rem 1rem;
-  padding: 0.85rem 1rem;
-  border-left: 3px solid var(--brand-orange);
-  background: var(--branco);
-  font-size: var(--font-14);
-}
-
-.mockRow strong {
-  font-weight: 700;
-  color: var(--brand-blue);
-}
-
-.mockRow span {
-  color: var(--ink-muted);
-}
-
-/* ——— Features ——— */
-.features {
-  padding: 4.5rem 0;
-  background: var(--papel);
-  border-block: 1px solid var(--linha);
-}
-
-.featureList {
-  display: grid;
-  gap: 0;
-  margin: 2.5rem 0 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--linha);
-}
-
-.featureItem {
-  display: grid;
-  grid-template-columns: 3.5rem 1fr;
-  gap: 1rem;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid var(--linha);
-  animation: rise 0.5s ease both;
-}
-
-.featureIndex {
-  font-family: var(--font-display), sans-serif;
-  font-size: var(--font-18);
-  font-weight: 600;
-  color: var(--brand-orange);
-}
-
-.featureTitle {
-  margin: 0;
-  font-size: var(--font-20);
-  color: var(--brand-blue);
-}
-
-.featureBody {
-  margin: 0.4rem 0 0;
-  max-width: 36rem;
-  color: var(--ink-soft);
-  line-height: 1.55;
-}
-
 /* ——— Pricing ——— */
 .pricing {
-  padding: 4.5rem 0 5rem;
-  background: var(--papel);
-  border-top: 1px solid var(--linha);
+  position: relative;
+  isolation: isolate;
+  padding: var(--section-pad-y) 0;
+  background: transparent;
+  border-top: none;
+}
+
+/* Continuation of the steps section's ambient glow: same ellipses, centred
+   the same distance above this section's top edge as they sit above the
+   steps panel's bottom edge, so the two halves meet without a seam. */
+.pricing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      38rem 22rem at 82% -11rem,
+      color-mix(in srgb, var(--brand-orange) 9%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      34rem 24rem at 12% -6rem,
+      color-mix(in srgb, var(--brand-blue) 7%, transparent),
+      transparent 70%
+    );
 }
 
 .pricingDuration {
   display: inline-flex;
   flex-wrap: wrap;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
   gap: 0.35rem;
   margin-top: 1.5rem;
   padding: 0.25rem;
@@ -773,7 +780,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
   /* Shared overhead on multi-column so the featured tab clears neighbors */
-  margin: 2.5rem 0 0;
+  margin: var(--section-head-gap) 0 0;
   padding: var(--pricing-tab-space) 0 0;
   list-style: none;
   align-items: stretch;
@@ -781,8 +788,10 @@
 
 .pricingTicket,
 .pricingTicketFeatured {
-  --ticket-notch-r: 12px;
+  /* rem, not px: scales with the fluid root font-size like the rest of the card */
+  --ticket-notch-r: 0.75rem;
   --ticket-border: var(--linha);
+  --ticket-bw: 1px;
 
   position: relative;
   display: flex;
@@ -797,6 +806,7 @@
 
 .pricingTicketFeatured {
   --ticket-border: var(--brand-blue);
+  --ticket-bw: 2px;
 }
 
 .pricingTicketTab {
@@ -820,72 +830,149 @@
   transform: translateY(-100%);
 }
 
+/*
+  The ticket shadow lives here, not on the halves: a drop-shadow follows the
+  alpha of the masked halves, so it keeps the rounded corners and the notches.
+  (A filter on the masked halves themselves rendered square-cornered.)
+*/
 .pricingTicketBody {
+  --ticket-shadow: drop-shadow(
+    0 6px 18px color-mix(in srgb, var(--brand-blue) 10%, transparent)
+  );
+
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 100%;
   background: transparent;
-  /* drop-shadow follows masked alpha (notches); box-shadow would fill holes */
-  filter: drop-shadow(0 6px 18px color-mix(in srgb, var(--brand-blue) 10%, transparent));
+  filter: var(--ticket-shadow);
+  transition: filter var(--motion-base) var(--ease-out);
 }
 
 .pricingTicketFeatured .pricingTicketBody {
-  filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--brand-blue) 32%, transparent));
+  --ticket-shadow: drop-shadow(
+    0 12px 28px color-mix(in srgb, var(--brand-blue) 32%, transparent)
+  );
 }
 
-.pricingTicket:hover .pricingTicketBody,
-.pricingTicketFeatured:hover .pricingTicketBody {
-  filter: drop-shadow(0 10px 22px color-mix(in srgb, var(--brand-blue) 16%, transparent));
+.pricingTicket:hover .pricingTicketBody {
+  --ticket-shadow: drop-shadow(
+    0 10px 22px color-mix(in srgb, var(--brand-blue) 16%, transparent)
+  );
 }
 
-.pricingTicket:hover,
-.pricingTicketFeatured:hover {
-  transform: translateY(-3px);
-}
+/*
+  Ticket halves. Each half casts its own drop-shadow and is then masked
+  (mask is applied after filter), so the notch cut-outs remove the shadow too —
+  otherwise the blurred shadow fills the notches with grey discs.
+  The mask tile is oversized (--ticket-shadow-room) on every side except the
+  seam, so the outer shadow survives but neither half shadows the other.
+*/
+.pricingTicketTop,
+.pricingTicketBottom {
+  --ticket-shadow-room: 4rem;
+  --ticket-hole: transparent calc(var(--ticket-notch-r) - 0.25px),
+    #000 calc(var(--ticket-notch-r) + 0.25px);
 
-.pricingTicketTop {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.35rem 1.25rem 1.15rem;
   background: var(--branco);
-  border: 1px solid var(--ticket-border);
+  border: var(--ticket-bw) solid var(--ticket-border);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-origin: border-box;
+  mask-origin: border-box;
+  -webkit-mask-clip: no-clip;
+  mask-clip: no-clip;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.pricingTicketTop {
+  padding: 1.35rem 1.25rem 1.15rem;
   border-bottom: none;
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
+  /* Tile reaches past left/top/right, stops exactly at the seam (bottom) */
+  -webkit-mask-size: calc(100% + 2 * var(--ticket-shadow-room))
+    calc(100% + var(--ticket-shadow-room));
+  mask-size: calc(100% + 2 * var(--ticket-shadow-room))
+    calc(100% + var(--ticket-shadow-room));
+  -webkit-mask-position: calc(-1 * var(--ticket-shadow-room))
+    calc(-1 * var(--ticket-shadow-room));
+  mask-position: calc(-1 * var(--ticket-shadow-room))
+    calc(-1 * var(--ticket-shadow-room));
   -webkit-mask-image:
     radial-gradient(
-      circle var(--ticket-notch-r) at 0 100%,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
+      circle var(--ticket-notch-r) at var(--ticket-shadow-room) 100%,
+      var(--ticket-hole)
     ),
     radial-gradient(
-      circle var(--ticket-notch-r) at 100% 100%,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
-    ),
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: source-in, source-in, source-in;
+      circle var(--ticket-notch-r) at calc(100% - var(--ticket-shadow-room)) 100%,
+      var(--ticket-hole)
+    );
   mask-image:
     radial-gradient(
-      circle var(--ticket-notch-r) at 0 100%,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
+      circle var(--ticket-notch-r) at var(--ticket-shadow-room) 100%,
+      var(--ticket-hole)
     ),
     radial-gradient(
-      circle var(--ticket-notch-r) at 100% 100%,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
-    ),
-    linear-gradient(#000 0 0);
-  mask-composite: intersect, intersect;
+      circle var(--ticket-notch-r) at calc(100% - var(--ticket-shadow-room)) 100%,
+      var(--ticket-hole)
+    );
 }
 
-.pricingTicketFeatured .pricingTicketTop {
-  border-width: 2px;
-  border-color: var(--brand-blue);
+.pricingTicketBottom {
+  /*
+    The bottom half slides up under the top half by --ticket-seam-overlap.
+    With the fluid root scale the seam often lands on a fractional pixel, and
+    two separately masked edges meeting there anti-alias into a thin solid
+    line behind the dashes. Overlapping hides that edge inside the top half;
+    the notch centres move down by the same amount so they stay on the seam.
+  */
+  --ticket-seam-overlap: 2px;
+
+  flex: 1;
+  margin-top: calc(-1 * var(--ticket-seam-overlap));
+  padding: calc(1.15rem + var(--ticket-seam-overlap)) 1.25rem 1.35rem;
+  border-top: none;
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  /* Tile starts at the (overlapped) top edge, reaches past left/right/bottom */
+  -webkit-mask-size: calc(100% + 2 * var(--ticket-shadow-room))
+    calc(100% + var(--ticket-shadow-room));
+  mask-size: calc(100% + 2 * var(--ticket-shadow-room))
+    calc(100% + var(--ticket-shadow-room));
+  -webkit-mask-position: calc(-1 * var(--ticket-shadow-room)) 0;
+  mask-position: calc(-1 * var(--ticket-shadow-room)) 0;
+  -webkit-mask-image:
+    radial-gradient(
+      circle var(--ticket-notch-r) at var(--ticket-shadow-room)
+        var(--ticket-seam-overlap),
+      var(--ticket-hole)
+    ),
+    radial-gradient(
+      circle var(--ticket-notch-r) at calc(100% - var(--ticket-shadow-room))
+        var(--ticket-seam-overlap),
+      var(--ticket-hole)
+    );
+  mask-image:
+    radial-gradient(
+      circle var(--ticket-notch-r) at var(--ticket-shadow-room)
+        var(--ticket-seam-overlap),
+      var(--ticket-hole)
+    ),
+    radial-gradient(
+      circle var(--ticket-notch-r) at calc(100% - var(--ticket-shadow-room))
+        var(--ticket-seam-overlap),
+      var(--ticket-hole)
+    );
+}
+
+.pricingTicketFeatured .pricingTicketTop,
+.pricingTicketFeatured .pricingTicketBottom {
   background: var(--brand-blue);
   color: var(--branco);
 }
@@ -912,51 +999,41 @@
   border-top-color: color-mix(in srgb, var(--branco) 45%, transparent);
 }
 
-.pricingTicketBottom {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  padding: 1.15rem 1.25rem 1.35rem;
-  background: var(--branco);
-  border: 1px solid var(--ticket-border);
-  border-top: none;
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
-  -webkit-mask-image:
+/* Card border continues around each notch (inner half-circles only) */
+.pricingTicketPerforation::after {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--ticket-notch-r)) 0;
+  background:
     radial-gradient(
-      circle var(--ticket-notch-r) at 0 0,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
-    ),
+        circle at 0 50%,
+        transparent calc(var(--ticket-notch-r) - var(--ticket-bw) - 0.25px),
+        var(--ticket-border) calc(var(--ticket-notch-r) - var(--ticket-bw)),
+        var(--ticket-border)
+          calc(var(--ticket-notch-r) + var(--ticket-ring-bleed, 0px) - 0.25px),
+        transparent calc(var(--ticket-notch-r) + var(--ticket-ring-bleed, 0px))
+      )
+      left / calc((var(--ticket-notch-r) + var(--ticket-ring-bleed, 0px)) * 2)
+      100% no-repeat,
     radial-gradient(
-      circle var(--ticket-notch-r) at 100% 0,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
-    ),
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: source-in, source-in, source-in;
-  mask-image:
-    radial-gradient(
-      circle var(--ticket-notch-r) at 0 0,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
-    ),
-    radial-gradient(
-      circle var(--ticket-notch-r) at 100% 0,
-      transparent calc(var(--ticket-notch-r) - 0.25px),
-      #000 calc(var(--ticket-notch-r) + 0.25px)
-    ),
-    linear-gradient(#000 0 0);
-  mask-composite: intersect, intersect;
+        circle at 100% 50%,
+        transparent calc(var(--ticket-notch-r) - var(--ticket-bw) - 0.25px),
+        var(--ticket-border) calc(var(--ticket-notch-r) - var(--ticket-bw)),
+        var(--ticket-border)
+          calc(var(--ticket-notch-r) + var(--ticket-ring-bleed, 0px) - 0.25px),
+        transparent calc(var(--ticket-notch-r) + var(--ticket-ring-bleed, 0px))
+      )
+      right / calc((var(--ticket-notch-r) + var(--ticket-ring-bleed, 0px)) * 2)
+      100% no-repeat;
 }
 
-.pricingTicketFeatured .pricingTicketBottom {
-  border-width: 2px;
-  border-color: var(--brand-blue);
-  background: var(--brand-blue);
-  color: var(--branco);
+/*
+  On the featured ticket the border and the card share the same blue, so the
+  ring can overlap the card edge. That hides the anti-aliased seam between the
+  ring and the masked notch, which otherwise shows as a pale halo on dark blue.
+*/
+.pricingTicketFeatured .pricingTicketPerforation::after {
+  --ticket-ring-bleed: 1.5px;
 }
 
 .pricingTicketFeatured .pricingName,
@@ -1085,7 +1162,9 @@
   background: var(--brand-blue);
   color: var(--branco);
   transform: scale(var(--btn-hover-scale));
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--brand-blue) 22%, transparent);
+  /* Kept tight: a larger shadow spills past the ticket's bottom edge and the
+     ticket's own drop-shadow filter re-casts it as a dark band under the card. */
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--brand-blue) 20%, transparent);
 }
 
 .pricingButton:active {
@@ -1101,7 +1180,7 @@
 .pricingButtonPrimary:hover {
   background: var(--brand-orange-dark);
   transform: scale(var(--btn-hover-scale));
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-orange) 32%, transparent);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--brand-orange) 30%, transparent);
 }
 
 .pricingButtonPrimary:active {
@@ -1118,7 +1197,7 @@
 .pricingButtonSecondary:hover {
   border-color: var(--brand-blue);
   transform: scale(var(--btn-hover-scale));
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--brand-blue) 12%, transparent);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--brand-blue) 12%, transparent);
 }
 
 .pricingButtonSecondary:active {
@@ -1147,26 +1226,36 @@
 .ctaInner {
   max-width: var(--max);
   margin-inline: auto;
-  padding: 4.5rem var(--space);
+  padding: var(--section-pad-y) var(--space);
   text-align: left;
 }
 
-.ctaLogo {
-  width: auto;
-  height: 3.25rem;
-  margin-bottom: 1.5rem;
-  object-fit: contain;
+.ctaInner {
+  display: grid;
+  gap: 3rem;
+}
+
+.ctaCopy {
+  min-width: 0;
+}
+
+.ctaVisual {
+  min-width: 0;
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
 }
 
 .ctaTitle {
   margin: 0;
   max-width: 18ch;
-  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  /* Same scale as .sectionTitle */
+  font-size: clamp(1.65rem, 3.2vw, 2.35rem);
   color: var(--branco);
 }
 
 .ctaLead {
-  margin: 0.9rem 0 0;
+  margin: 0.85rem 0 0;
   max-width: 36rem;
   font-size: var(--font-18);
   line-height: 1.55;
@@ -1184,54 +1273,195 @@
 .footer {
   border-top: 1px solid var(--linha);
   background: var(--branco);
-  padding: 2.25rem var(--space) 2.5rem;
+  padding-block: 2.5rem 1.5rem;
 }
 
 .footerInner {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
   max-width: var(--max);
   margin-inline: auto;
+  padding-inline: var(--space);
+}
+
+/* Mobile: brand left · nav right on one row, CTA full width underneath */
+.footerTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "brand nav"
+    "cta   cta";
+  align-items: center;
+  gap: 1.75rem 1.5rem;
+}
+
+.footerBrand {
+  grid-area: brand;
+  min-width: 0;
 }
 
 .footerLogo {
+  display: block;
   width: auto;
   height: 2.25rem;
   object-fit: contain;
 }
 
-.footerNote {
-  margin: 0.65rem 0 0;
-  font-size: var(--font-14);
-  color: var(--ink-muted);
+.footerNav {
+  grid-area: nav;
+  min-width: 0;
 }
 
-.footerMeta {
+.footerList {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem clamp(1rem, 4vw, 1.75rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: var(--font-14);
-  color: var(--ink-soft);
-}
-
-.footerMeta a {
   font-weight: 600;
+}
+
+/* Nav no longer fits beside the logo: stack everything in one column */
+@media (max-width: 399px) {
+  .footerTop {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "brand"
+      "nav"
+      "cta";
+    justify-items: center;
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .footerList {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+}
+
+.footerList a {
+  display: inline-block;
+  white-space: nowrap;
+  padding-block: 0.25rem;
   text-decoration: none;
-  color: var(--brand-blue);
+  color: var(--ink-soft);
   transition: color var(--motion-base) var(--ease-out);
 }
 
-.footerMeta a:hover {
+.footerList a:hover {
   color: var(--brand-orange);
 }
 
-.footerMeta a:focus-visible {
+.footerList a:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
   outline-offset: 3px;
   border-radius: 2px;
 }
 
-.footerFine {
-  margin: 0.35rem 0 0;
+.footerCta {
+  grid-area: cta;
+  justify-self: center;
+  min-width: 0;
+}
+
+.footerCtaButton {
+  gap: 0.5rem;
+  width: auto;
+  font-size: var(--font-16, 1rem);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--brand-orange) 24%, transparent);
+}
+
+.footerCtaButton span {
+  transition: transform var(--motion-base) var(--ease-out);
+}
+
+.footerCtaButton:hover span {
+  transform: translateX(3px);
+}
+
+.footerCtaButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.footerBottom {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linha);
+  font-size: 0.8125rem;
   color: var(--ink-muted);
+  text-align: center;
+}
+
+.footerBottom p {
+  margin: 0;
+}
+
+/* Tablet: brand + CTA on one row, nav underneath */
+@media (min-width: 640px) {
+  .footerTop {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand cta"
+      "nav   nav";
+    align-items: center;
+    gap: 1.75rem 2rem;
+  }
+
+  .footerCtaButton {
+    width: auto;
+  }
+}
+
+/* Single-row footer as soon as brand · nav · CTA fit comfortably.
+   Top: brand · nav (centred) · CTA
+   Bottom: copyright on its own hairline row */
+@media (min-width: 640px) {
+  .footer {
+    padding-block: 1.5rem 1rem;
+  }
+
+  .footerInner {
+    gap: 1rem;
+  }
+
+  .footerTop {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "brand nav cta";
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .footerLogo {
+    height: 2rem;
+  }
+
+  .footerList {
+    flex-wrap: nowrap;
+    gap: clamp(1.25rem, 2.5vw, 2rem);
+  }
+
+  .footerList a {
+    white-space: nowrap;
+  }
+
+  .footerCta {
+    justify-self: end;
+  }
+
+  .footerCtaButton {
+    padding: 0.75rem 1.3rem;
+    font-size: var(--font-14);
+  }
+
+  .footerBottom {
+    padding-top: 0.85rem;
+  }
 }
 
 @keyframes rise {
@@ -1245,32 +1475,34 @@
   }
 }
 
+/* GSAP owns enter/exit while the story pin is active */
+:global([data-flight-active]) .heroInner {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .heroInner,
-  .proofItem,
-  .productMock,
-  .featureItem {
+  .heroInner {
     animation: none;
   }
 
   .header,
   .skipLink,
   .fabBackdrop,
-  .fabBackdrop::before,
-  .fabItem,
+  .mnavSheet,
+  .fabRootOpen .mnavSheet,
+  .mnavItem,
+  .fabRootOpen .mnavItem,
+  .mnavArrow,
+  .mnavCtaButton svg,
   .fabLid,
   .fabBase,
   .fabToggle {
     transition: none;
   }
 
-  .fabRootOpen .fabBackdrop::before {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  .fabRootOpen .fabItem {
-    transition-delay: 0ms;
+  .mnavSheet,
+  .mnavItem {
+    transform: none;
   }
 
   .fabRootOpen .fabLid,
@@ -1286,7 +1518,6 @@
   .headerCta,
   .primaryButton,
   .secondaryButton,
-  .ghostButton,
   .pricingButton,
   .pricingButtonPrimary,
   .pricingButtonSecondary,
@@ -1298,14 +1529,16 @@
       border-color var(--motion-fast) var(--ease-out);
   }
 
+  .footerCtaButton:hover span {
+    transform: none;
+  }
+
   .headerCta:hover,
   .headerCta:active,
   .primaryButton:hover,
   .primaryButton:active,
   .secondaryButton:hover,
   .secondaryButton:active,
-  .ghostButton:hover,
-  .ghostButton:active,
   .pricingButton:hover,
   .pricingButton:active,
   .pricingButtonPrimary:hover,
@@ -1314,21 +1547,6 @@
   .pricingButtonSecondary:active {
     transform: none;
     box-shadow: none;
-  }
-}
-
-@media (min-width: 640px) {
-  .proofList {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .proofItem {
-    border-bottom: 0;
-    border-right: 1px solid var(--linha);
-  }
-
-  .proofItem:last-child {
-    border-right: 0;
   }
 }
 
@@ -1343,8 +1561,10 @@
     display: flex;
   }
 
+  /* Keep CTA next to nav; nav already has margin-left: auto */
   .headerCta {
-    margin-left: auto;
+    display: inline-flex;
+    margin-left: 0.75rem;
   }
 
   .fabToggle {
@@ -1353,17 +1573,6 @@
 
   .fabRoot {
     display: none;
-  }
-}
-
-@media (max-width: 767px) {
-  .header .headerCta {
-    display: none;
-  }
-
-  .fabItem .headerCta {
-    margin-left: 0;
-    pointer-events: auto;
   }
 }
 
@@ -1382,54 +1591,150 @@
   .pricingTicketFeatured {
     margin-top: 0;
   }
+}
 
-  .pricingTicketBody {
-    filter: drop-shadow(0 4px 12px color-mix(in srgb, var(--brand-blue) 12%, transparent));
+/* Short screens (phones in landscape, small laptops with big zoom):
+   tighten the hero rhythm so it still reads as one full screen */
+@media (max-height: 560px) and (orientation: landscape) {
+  .heroBlock {
+    --hero-header: 3.75rem;
   }
 
-  .pricingTicketFeatured .pricingTicketBody {
-    filter: drop-shadow(0 8px 20px color-mix(in srgb, var(--brand-blue) 28%, transparent));
+  .heroLead {
+    margin-top: 0.85rem;
+    font-size: 1rem;
+  }
+
+  .heroActions {
+    margin-top: 1.25rem;
+  }
+
+  .heroTitle {
+    font-size: clamp(1.6rem, 7.5svh, 2.4rem);
+  }
+}
+
+/* Portrait phones & tablets: the stack fills the screen instead of
+   huddling in the middle — every gap scales with the viewport height, so
+   tall phones get air between copy, CTAs and highlights while short ones
+   stay compact. Ratio lead : actions : highlights ≈ 1 : 1.6 : 3. */
+@media (max-width: 1023px) and (orientation: portrait) {
+  .hero {
+    align-items: stretch;
+  }
+
+  .heroInner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: calc(var(--hero-header) + clamp(1.5rem, 5svh, 3.5rem))
+      clamp(2.5rem, 7svh, 4.5rem);
+  }
+
+  .heroLead {
+    margin-top: clamp(1rem, 2.4svh, 1.75rem);
+  }
+
+  .heroActions {
+    margin-top: clamp(1.75rem, 4.2svh, 2.75rem);
+  }
+}
+
+/* Portrait phones (≤ 500px): one clear primary action. Reading order becomes
+   headline → lead → proof (highlights) → CTAs, so the CTAs close the hero
+   in the thumb zone; the buttons stack full width with "Começar agora"
+   first and the outlined "Ver planos" under it as the secondary option.
+   heroCopy steps out of the box (display: contents) so its children can
+   be ordered alongside the highlights; DOM order is unchanged for
+   keyboard and screen-reader users. */
+@media (max-width: 500px) and (orientation: portrait) {
+  .heroCopy {
+    display: contents;
+  }
+
+  .heroTitle {
+    order: 1;
+  }
+
+  .heroLead {
+    order: 2;
+  }
+
+  .heroActions {
+    order: 4;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: clamp(2rem, 0.75rem + 3.5svh, 3.75rem);
+  }
+
+  .heroActions .primaryButton,
+  .heroActions .secondaryButton {
+    width: 100%;
+    min-height: 3.25rem;
+  }
+}
+
+/* Large phones & tablets (501–1023px): "Aderir" is the one primary action — bigger target and wider (same 14px label as everywhere),
+   so it clearly outweighs "Ver planos" (which only
+   matches its height to keep the row aligned). Colours stay as they are. */
+@media (min-width: 501px) and (max-width: 1023px) {
+  .heroActions {
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .heroActions .primaryButton {
+    min-width: 13rem;
+    min-height: 3.5rem;
+    padding-inline: 2.25rem;
+  }
+
+  .heroActions .secondaryButton {
+    min-height: 3.5rem;
+  }
+}
+
+/* Landscape phones / small tablets: no vertical room to stack, so the
+   highlights move beside the copy (same idea as desktop, lighter styling) */
+@media (max-height: 560px) and (orientation: landscape) and (min-width: 640px) and (max-width: 1023px) {
+  .heroInner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(11rem, 14rem);
+    align-items: center;
+    gap: 2rem;
   }
 }
 
 @media (min-width: 1024px) {
-  /* Full-viewport sections; proof inside heroBlock; footer inside ctaBlock */
-  .heroBlock,
-  .ctaBlock {
-    height: 100vh;
-    height: 100dvh;
+  .heroBlock {
     min-height: 100vh;
     min-height: 100dvh;
   }
 
-  .heroBlock .hero {
-    flex: 1 1 auto;
-    min-height: 0;
-    align-items: center;
+  /* Desktop: both hero buttons 10rem wide (equal columns, see .heroActions) */
+  .heroActions .primaryButton {
+    min-width: 10rem;
   }
 
   .heroInner {
-    padding-block: clamp(4rem, 10vh, 7rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+    align-items: center;
+    gap: clamp(2.5rem, 5vw, 5rem);
+    /* Top padding clears the fixed header */
+    padding-block: calc(4.5rem + clamp(1.5rem, 6vh, 4rem)) clamp(3rem, 8vh, 6rem);
   }
 
   .heroTitle {
-    max-width: 18ch;
+    max-width: 16ch;
+    font-size: clamp(2.4rem, min(4.6vw, 7.5svh), 3.8rem);
   }
 
   .heroLead {
-    max-width: min(42rem, 52%);
-  }
-
-  .heroBlock .proof {
-    flex-shrink: 0;
-  }
-
-  .proofItem {
-    padding-block: 1.5rem;
+    max-width: 36rem;
   }
 
   .sectionTitle {
-    max-width: 28ch;
     font-size: clamp(1.85rem, 2.6vw, 2.6rem);
   }
 
@@ -1448,33 +1753,41 @@
 
   .ctaInner {
     width: 100%;
-    padding-block: clamp(3.5rem, 8vh, 6rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    align-items: center;
+    gap: clamp(2.5rem, 5vw, 5rem);
+  }
+
+  .ctaVisual {
+    max-width: 40rem;
+    margin-inline: 0 auto;
   }
 
   .ctaTitle {
     max-width: 22ch;
+    font-size: clamp(1.85rem, 2.6vw, 2.6rem);
   }
 
   .ctaLead {
     max-width: 44rem;
+    font-size: clamp(1.125rem, 1.35vw, 1.3rem);
   }
 
   .ctaBlock .footer {
     flex-shrink: 0;
   }
 
+  /* Same vertical padding as every other section (var(--section-pad-y)) */
   .problem,
   .pricing {
-    min-height: 100vh;
-    min-height: 100dvh;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding-block: clamp(3.5rem, 7vh, 6rem);
   }
 
   .problem .sectionInner {
+    flex: 1 1 auto;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
     gap: clamp(2.5rem, 5vw, 5rem);
     width: 100%;
@@ -1485,37 +1798,11 @@
     max-width: none;
   }
 
-  .productMock {
-    min-height: min(52vh, 28rem);
+  .pricing .sectionInner {
     display: flex;
-    flex-direction: column;
-  }
-
-  .mockBody {
-    flex: 1;
-    display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     justify-content: center;
-    padding: clamp(1.5rem, 2.5vw, 2.25rem);
-  }
-
-  .mockResults {
-    gap: 0.75rem;
-    margin-top: 1.35rem;
-  }
-
-  .mockRow {
-    padding: 1rem 1.15rem;
-    font-size: var(--font-16);
-  }
-
-  .featureItem {
-    grid-template-columns: 4.5rem 1fr;
-    gap: 1.5rem;
-    padding: 1.75rem 0;
-  }
-
-  .pricing .sectionInner {
     width: 100%;
   }
 
@@ -1540,30 +1827,45 @@
     min-height: 100%;
   }
 
-  .footerInner {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-end;
+}
+
+/*
+ * Desktop story only (keep in sync with STORY_POINTER_QUERY): each section is
+ * a full-viewport panel that crossfades in place. Without the story the
+ * sections stack in normal flow and keep their natural height, so short
+ * content no longer leaves a screen of empty space around it.
+ */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .problem,
+  .pricing,
+  .ctaBlock {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .ctaInner {
+    /* Top padding clears the fixed header so the visual never slides under it */
+    padding-block: calc(4.5rem + clamp(0.75rem, 3vh, 3rem)) clamp(1.5rem, 4vh, 4rem);
   }
 }
 
 @media (min-width: 1400px) {
+  .heroInner {
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+  }
+
   .heroTitle {
-    max-width: 20ch;
-    font-size: clamp(2.6rem, 4.2vw, 4rem);
+    max-width: 17ch;
+    font-size: clamp(2.6rem, min(4.2vw, 8svh), 4.25rem);
   }
 
   .heroLead {
-    max-width: min(46rem, 48%);
+    max-width: 40rem;
     font-size: clamp(1.15rem, 1.4vw, 1.35rem);
   }
 
   .problem .sectionInner {
     gap: clamp(3.5rem, 6vw, 6.5rem);
-  }
-
-  .productMock {
-    min-height: min(56vh, 32rem);
   }
 
   .pricingGrid {
@@ -1572,6 +1874,5 @@
 
   .ctaTitle {
     max-width: 24ch;
-    font-size: clamp(2.1rem, 3vw, 3rem);
   }
 }

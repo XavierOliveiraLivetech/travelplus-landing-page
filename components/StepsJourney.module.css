@@ -1,43 +1,59 @@
 .scrollRoot {
   position: relative;
-  /* Always content height — no tall sticky runway / white void */
   height: auto;
-  background: var(--branco);
+  background: transparent;
   overflow-anchor: none;
 }
 
-.scrollLocked {
-  /* Active while wheel scroll drives the plane instead of the page */
-}
-
 .panel {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 4.5rem 0 3rem;
+  padding: var(--section-pad-y) 0;
   box-sizing: border-box;
-  background: var(--branco);
+  background: transparent;
 }
 
-.panelFixed {
-  position: fixed;
-  /* top set inline to vertically center the section while locked */
-  left: 0;
-  right: 0;
-  z-index: 20;
-  background: var(--branco);
+/* Ambient brand glow — adds warmth to the open canvas without competing with copy.
+   Centres are anchored to the panel's bottom edge in rem (not %), so the pricing
+   section can paint the other half of each ellipse at the same offsets and the
+   glow carries across the seam (see `.pricing::before` in app/site.module.css). */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      38rem 22rem at 82% calc(100% - 11rem),
+      color-mix(in srgb, var(--brand-orange) 9%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      34rem 24rem at 12% calc(100% - 6rem),
+      color-mix(in srgb, var(--brand-blue) 7%, transparent),
+      transparent 70%
+    );
 }
 
 .header {
+  position: relative;
+  z-index: 2;
   width: 100%;
   flex-shrink: 0;
   box-sizing: border-box;
 }
 
-.stage {
-  /* Hidden below 1024px — path animation is desktop-only */
+.desktopBlock {
   display: none;
+}
+
+.stage {
   position: relative;
+  z-index: 2;
   width: min(100%, var(--max));
   margin: 3.25rem auto 0;
   padding-inline: var(--space);
@@ -46,6 +62,8 @@
 }
 
 .steps {
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -53,36 +71,17 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  z-index: 2;
 }
 
 .step {
   flex: 0 1 auto;
-  width: fit-content;
+  width: min(38ch, calc((100% - 2.5rem) / 3));
   max-width: min(38ch, calc((100% - 2.5rem) / 3));
   margin: 0;
   padding: 0;
   min-width: 0;
   text-align: left;
   background: none;
-  pointer-events: none;
-  transition:
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.6s ease;
-  will-change: opacity, filter;
-}
-
-.stepRevealed,
-.stepActive {
-  opacity: 1;
-  filter: none;
-}
-
-/* Future steps stay hidden; past + active remain visible */
-.stepUpcoming {
-  opacity: 0;
-  filter: blur(2px);
-  pointer-events: none;
 }
 
 .stepNumber {
@@ -116,102 +115,6 @@
   max-width: none;
 }
 
-/* Flight corridor under the step grid — path connects column centres */
-.track {
-  position: relative;
-  width: 100%;
-  height: clamp(5.5rem, 11vh, 7.5rem);
-  margin-top: clamp(1.25rem, 2.5vh, 2rem);
-  overflow: visible;
-}
-
-.svg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  overflow: visible;
-}
-
-.pathBase {
-  /* Invisible guide — only the progress stroke is drawn as the plane advances */
-  fill: none;
-  stroke: transparent;
-  stroke-width: 3.25;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.pathProgress {
-  fill: none;
-  stroke: color-mix(in srgb, var(--brand-blue) 42%, transparent);
-  stroke-width: 3.25;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.checkpoint {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--brand-blue) 35%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--branco) 70%, transparent);
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0.7);
-  will-change: transform, opacity, background;
-  transition:
-    opacity 0.35s ease,
-    background 0.35s ease,
-    transform 0.35s ease,
-    box-shadow 0.35s ease,
-    width 0.35s ease,
-    height 0.35s ease;
-}
-
-.checkpointVisible {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.checkpointReached {
-  background: color-mix(in srgb, var(--brand-blue) 70%, transparent);
-}
-
-.checkpointActive {
-  width: 0.85rem;
-  height: 0.85rem;
-  background: color-mix(in srgb, var(--brand-orange) 75%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-orange) 18%, transparent);
-}
-
-.plane {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--brand-orange);
-  pointer-events: none;
-  will-change: transform;
-  filter: drop-shadow(
-    0 1px 1px color-mix(in srgb, var(--brand-blue) 10%, transparent)
-  );
-}
-
-.plane svg {
-  display: block;
-  overflow: visible;
-}
-
 .staticBlock {
   width: 100%;
   box-sizing: border-box;
@@ -221,7 +124,7 @@
   display: grid;
   gap: 0;
   width: 100%;
-  margin: 2.5rem 0 0;
+  margin: var(--section-head-gap) 0 0;
   padding: 0;
   list-style: none;
   box-sizing: border-box;
@@ -281,24 +184,17 @@
 }
 
 @media (max-width: 1023px) {
-  .panel {
-    padding: 4.5rem 0 3.25rem;
+  .desktopBlock {
+    display: none;
   }
 
-  .panelFixed {
-    position: relative;
-    top: auto;
-    left: auto;
-    right: auto;
-    z-index: auto;
+  .staticBlock {
+    display: block;
   }
 }
 
-/* Path / plane / wheel-lock journey — 1024px and up only */
 @media (min-width: 1024px) {
   .scrollRoot {
-    min-height: 100vh;
-    min-height: 100dvh;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -306,12 +202,23 @@
   }
 
   .panel {
-    min-height: 100vh;
-    min-height: 100dvh;
+    flex: 1 1 auto;
     justify-content: center;
-    gap: clamp(1.5rem, 4vh, 3rem);
-    padding-block: clamp(3rem, 6vh, 5rem);
+    gap: 0;
+    /* Same inset as every section (var(--section-pad-y)); centering handles balance */
     box-sizing: border-box;
+  }
+
+  .desktopBlock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: clamp(2.25rem, 5vh, 3.5rem);
+  }
+
+  .staticBlock {
+    display: none;
   }
 
   .stage {
@@ -319,28 +226,28 @@
     flex-direction: column;
     width: min(100%, var(--max));
     height: auto;
-    margin-top: clamp(1.5rem, 3vh, 2.75rem);
+    margin-top: 0;
+    /* Modest room under the steps for the paper-plane rail */
+    padding-bottom: clamp(2.5rem, 5vh, 4rem);
+  }
+
+  .stepBody {
+    /* Same height for 1–3 lines so step cards stay aligned */
+    min-height: calc(1.55em * 3);
+  }
+}
+
+/* Desktop story only: the section is a full-viewport crossfade panel */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .scrollRoot {
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 }
 
 @media (min-width: 1400px) {
-  .track {
-    height: clamp(6.5rem, 12vh, 8.5rem);
-  }
-
   .step {
+    width: min(44ch, calc((100% - 2.5rem) / 3));
     max-width: min(44ch, calc((100% - 2.5rem) / 3));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .step,
-  .checkpoint {
-    transition: none !important;
-    filter: none !important;
-  }
-
-  .stepUpcoming {
-    opacity: 0;
   }
 }

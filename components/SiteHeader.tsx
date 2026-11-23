@@ -3,20 +3,35 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
-import { FaBoxesStacked, FaListOl, FaTags } from "react-icons/fa6";
+import { FaArrowRight } from "react-icons/fa6";
 import styles from "@/app/site.module.css";
+import { assetPath } from "@/lib/assetPath";
 
 const NAV_LINKS = [
-  { href: "#produto", label: "Produto", Icon: FaBoxesStacked },
-  { href: "#como-funciona", label: "Como funciona", Icon: FaListOl },
-  { href: "#planos", label: "Planos", Icon: FaTags },
+  { href: "#produto", label: "Produto", hint: "Conheça a nossa plataforma" },
+  { href: "#como-funciona", label: "Como funciona", hint: "Três passos até começar a vender" },
+  { href: "#planos", label: "Planos", hint: "Os nossos planos" },
 ] as const;
+
+/** Section currently under the header — used to mark the active menu row */
+function findActiveHref(): string | null {
+  const probe = window.innerHeight * 0.35;
+  let active: string | null = null;
+  for (const link of NAV_LINKS) {
+    const el = document.querySelector<HTMLElement>(link.href);
+    if (!el) continue;
+    const rect = el.getBoundingClientRect();
+    if (rect.top <= probe && rect.bottom > probe) active = link.href;
+  }
+  return active;
+}
 
 const HEADER_SOLID_OFFSET_PX = 72;
 
 export function SiteHeader() {
   const menuId = useId();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeHref, setActiveHref] = useState<string | null>(null);
   /** Transparent over dark hero media until the hero title reaches the nav */
   const [overHero, setOverHero] = useState(true);
 
@@ -28,6 +43,15 @@ export function SiteHeader() {
     }
 
     const syncFromTitle = () => {
+      const bridge = document.querySelector<HTMLElement>("[data-story-bridge]");
+      // Pinned hero stays in the viewport at opacity 0 — follow its dark
+      // background, so the nav flips as soon as the page turns light.
+      const heroDark = bridge?.dataset.heroDark;
+      if (bridge?.dataset.flightActive === "true" && heroDark) {
+        setOverHero(heroDark === "true");
+        return;
+      }
+
       const top = title.getBoundingClientRect().top;
       // Transparent only while the title is still fully below the nav
       setOverHero(top > HEADER_SOLID_OFFSET_PX);
@@ -41,21 +65,31 @@ export function SiteHeader() {
     const onArrive = (event: Event) => {
       const id = (event as CustomEvent<{ id?: string }>).detail?.id;
       if (!id) return;
-      if (id === "inicio") {
+      if (id === "inicio" || id === "hero") {
         syncFromTitle();
         return;
       }
       setOverHero(false);
     };
 
+    const panelObserver = new MutationObserver(syncFromTitle);
+
     syncFromTitle();
     observer.observe(title);
+    const bridge = document.querySelector("[data-story-bridge]");
+    if (bridge) {
+      panelObserver.observe(bridge, {
+        attributes: true,
+        attributeFilter: ["data-hero-dark", "data-flight-active"],
+      });
+    }
     window.addEventListener("scroll", syncFromTitle, { passive: true });
     window.addEventListener("resize", syncFromTitle);
     window.addEventListener("tp-section-arrive", onArrive);
 
     return () => {
       observer.disconnect();
+      panelObserver.disconnect();
       window.removeEventListener("scroll", syncFromTitle);
       window.removeEventListener("resize", syncFromTitle);
       window.removeEventListener("tp-section-arrive", onArrive);
@@ -70,6 +104,7 @@ export function SiteHeader() {
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+    setActiveHref(findActiveHref());
 
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -77,7 +112,8 @@ export function SiteHeader() {
     };
   }, [menuOpen]);
 
-  const solid = !overHero;
+  // While the menu is open the header melts into the dark scrim
+  const solid = !overHero && !menuOpen;
 
   function closeMenu() {
     setMenuOpen(false);
@@ -93,7 +129,7 @@ export function SiteHeader() {
         <div className={styles.headerInner}>
           <Link href="/" className={styles.logoLink} aria-label="TravelPlus">
             <Image
-              src={solid ? "/brand/logo-mark.png" : "/brand/logo-on-dark.png"}
+              src={assetPath(solid ? "/brand/logo-mark.png" : "/brand/logo-on-dark.png")}
               alt="TravelPlus"
               width={140}
               height={56}
@@ -146,60 +182,58 @@ export function SiteHeader() {
           onClick={closeMenu}
         />
 
-        <div className={styles.fabCluster}>
-          <nav
-            id={menuId}
-            className={styles.fabMenu}
-            aria-label="Principal móvel"
-            aria-hidden={!menuOpen}
-          >
-            <ul className={styles.fabList}>
-              {NAV_LINKS.map((link, index) => {
-                const Icon = link.Icon;
-                return (
-                  <li
-                    key={link.href}
-                    className={styles.fabItem}
-                    style={
-                      {
-                        "--fab-i": String(index),
-                      } as React.CSSProperties
-                    }
-                  >
-                    <a
-                      href={link.href}
-                      className={styles.fabAction}
-                      tabIndex={menuOpen ? 0 : -1}
-                      onClick={closeMenu}
-                    >
-                      <span className={styles.fabLabel}>{link.label}</span>
-                      <span className={styles.fabIconBtn} aria-hidden>
-                        <Icon />
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-              <li
-                className={styles.fabItem}
-                style={
-                  {
-                    "--fab-i": String(NAV_LINKS.length),
-                  } as React.CSSProperties
-                }
-              >
-                <Link
-                  href="/aderir"
-                  className={styles.headerCta}
-                  tabIndex={menuOpen ? 0 : -1}
-                  onClick={closeMenu}
+        <nav
+          id={menuId}
+          className={styles.mnavSheet}
+          aria-label="Principal móvel"
+          aria-hidden={!menuOpen}
+        >
+          <ul className={styles.mnavList}>
+            {NAV_LINKS.map((link, index) => {
+              const isActive = activeHref === link.href;
+              return (
+                <li
+                  key={link.href}
+                  className={styles.mnavItem}
+                  style={{ "--mnav-i": String(index) } as React.CSSProperties}
                 >
-                  Pedir adesão
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </div>
+                  <a
+                    href={link.href}
+                    className={[styles.mnavLink, isActive ? styles.mnavLinkActive : ""]
+                      .filter(Boolean)
+                      .join(" ")}
+                    aria-current={isActive ? "location" : undefined}
+                    tabIndex={menuOpen ? 0 : -1}
+                    onClick={closeMenu}
+                  >
+                    <span className={styles.mnavText}>
+                      <span className={styles.mnavLabel}>{link.label}</span>
+                      <span className={styles.mnavHint}>{link.hint}</span>
+                    </span>
+                    <span className={styles.mnavArrow} aria-hidden>
+                      <FaArrowRight />
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div
+            className={[styles.mnavItem, styles.mnavCta].join(" ")}
+            style={{ "--mnav-i": String(NAV_LINKS.length) } as React.CSSProperties}
+          >
+            <Link
+              href="/aderir"
+              className={styles.mnavCtaButton}
+              tabIndex={menuOpen ? 0 : -1}
+              onClick={closeMenu}
+            >
+              Pedir adesão
+              <FaArrowRight aria-hidden />
+            </Link>
+          </div>
+        </nav>
       </div>
     </>
   );

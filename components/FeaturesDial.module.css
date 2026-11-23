@@ -1,132 +1,396 @@
 .section {
   position: relative;
-  background: var(--papel);
-  border-block: 1px solid var(--linha);
+  /* Transparent so the paper-plane trail can show behind the copy */
+  background: transparent;
+  border: none;
   color: var(--ink);
+  /* The orbit canvas is wider than the globe and hangs off the right on small screens. */
+  overflow-x: clip;
 }
 
 .inner {
+  position: relative;
+  z-index: 2;
   width: 100%;
   box-sizing: border-box;
-  padding-block: 2.75rem 3rem;
+  padding-block: var(--section-pad-y);
+}
+
+/* ——— Header + globe ——— */
+
+.headRow {
+  position: relative;
+  margin-bottom: 2.25rem;
 }
 
 .header {
-  margin-bottom: 1.75rem;
+  position: relative;
+  z-index: 1;
 }
+
+.globeWrap {
+  position: absolute;
+  top: -5rem;
+  right: -3.5rem;
+  z-index: 0;
+  width: 10rem;
+  opacity: 0.5;
+}
+
+/*
+ * The plane's orbit reaches ~42% of the globe's width past its edge; this
+ * margin (net of the page gutter) keeps the plane from being cut off.
+ */
+.globeWrap {
+  --orbit-room: max(0px, calc(var(--globe-w, 10rem) * 0.42 - var(--space, 1.25rem)));
+}
+
+.globeWrap::before {
+  content: "";
+  position: absolute;
+  inset: 2%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 60% 60%,
+    color-mix(in srgb, var(--brand-orange) 45%, transparent),
+    color-mix(in srgb, var(--brand-blue) 24%, transparent) 55%,
+    transparent 72%
+  );
+  filter: blur(28px);
+  /* Decorative halo: never catches clicks meant for the globe or the page */
+  pointer-events: none;
+}
+
+.globe {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.globeBody {
+  fill: url(#globeFill);
+  stroke: color-mix(in srgb, var(--brand-blue) 30%, transparent);
+  stroke-width: 1.4;
+}
+
+.globeGrid line,
+.globeGrid ellipse {
+  fill: none;
+  stroke: color-mix(in srgb, var(--brand-blue) 20%, transparent);
+  stroke-width: 1;
+}
+
+.globeStage {
+  position: relative;
+  width: 100%;
+  overflow: visible;
+}
+
+/*
+ * The globe doubles as the pause / resume control for its own animation.
+ * It inherits pointer-events: on desktop the story hides this section with
+ * pointer-events: none, and the button must not catch clicks through it.
+ */
+.globeToggle {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.globeToggle:focus-visible {
+  outline: 2px solid var(--brand-orange);
+  outline-offset: 4px;
+}
+
+/* Play / pause badge (MotionToggle.module.css) on the globe's lower right edge */
+.globeControl {
+  position: absolute;
+  right: 4%;
+  bottom: 4%;
+  z-index: 2;
+}
+
+.globeCanvas,
+.globeCanvas canvas {
+  background: transparent;
+}
+
+/* ——— Feature grid ——— */
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.75rem 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+.card {
+  --accent: var(--brand-orange);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  align-content: start;
+  column-gap: 1rem;
   min-width: 0;
   margin: 0;
-  padding: 0.15rem 0.4rem 0;
-  animation: featureRise 0.45s var(--ease-out) both;
+  padding: 1.15rem 1.15rem 1.25rem;
+  background: var(--branco);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius-card);
+  box-shadow: 0 1px 2px rgb(24 0 72 / 0.04);
 }
 
-.index {
+.icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--ui-radius-box);
+  background: color-mix(in srgb, var(--accent) 12%, var(--branco));
+  color: var(--accent);
+  font-size: 1.35rem;
+}
+
+.icon svg {
   display: block;
-  width: 100%;
-  height: clamp(2.1rem, 7vw, 3rem);
-  margin-bottom: 0.7rem;
-  overflow: hidden;
-  line-height: 0;
-  text-align: center;
-  pointer-events: none;
 }
 
-.indexGlyph {
-  display: block;
-  font-family: var(--font-display), sans-serif;
-  font-size: clamp(3.5rem, 12vw, 4.75rem);
-  font-weight: 700;
-  letter-spacing: -0.05em;
-  line-height: 0.78;
-  color: color-mix(in srgb, var(--ink-muted) 32%, transparent);
-  transition: color var(--motion-base) var(--ease-out);
-  user-select: none;
-}
-
-.item:hover .indexGlyph,
-.item:focus-within .indexGlyph {
-  color: var(--brand-orange);
+.copy {
+  min-width: 0;
 }
 
 .title {
   margin: 0;
-  max-width: 16ch;
-  font-size: var(--font-18);
+  font-size: 1.0625rem;
   font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
   color: var(--brand-blue);
-  transition: color var(--motion-base) var(--ease-out);
 }
 
 .body {
-  margin: 0.5rem 0 0;
-  max-width: 28ch;
+  margin: 0.35rem 0 0;
+  max-width: 46ch;
   font-size: var(--font-14);
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--ink-soft);
+  text-wrap: pretty;
 }
 
-@keyframes featureRise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Entrance below the story breakpoint: see components/ScrollReveal.tsx */
 
-/* —— Tablet: 2 columns (native scroll; snap off) —— */
+/* Tablet: 2 columns, icon above the copy; the odd last card spans the row */
 @media (min-width: 640px) {
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 2rem 1.5rem;
+    gap: 1rem;
   }
 
-  .item {
-    padding-inline: 0.65rem;
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1rem;
+    padding: 1.5rem;
   }
 
-  .index {
-    height: clamp(2.35rem, 5.5vw, 3.25rem);
-  }
-
-  .indexGlyph {
-    font-size: clamp(3.75rem, 8.5vw, 5rem);
+  .card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1.25rem;
   }
 
   .title {
-    font-size: clamp(1.05rem, 2vw, 1.2rem);
-  }
-
-  .body {
-    font-size: var(--font-14);
-    max-width: 30ch;
+    font-size: var(--font-18);
   }
 }
 
-/* —— Desktop snap viewport: one screen, 5-up —— */
+/* Desktop: bento — two key capabilities on top, three below */
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: clamp(0.85rem, 1.2vw, 1.25rem);
+  }
+
+  .card {
+    grid-column: span 2;
+    padding: clamp(1.25rem, 1.8vw, 1.75rem);
+  }
+
+  .card[data-featured] {
+    grid-column: span 3;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1.25rem;
+  }
+
+  .card:last-child:nth-child(odd) {
+    grid-column: span 2;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card[data-featured] .icon {
+    width: 3.25rem;
+    height: 3.25rem;
+    font-size: 1.6rem;
+  }
+
+  .card[data-featured] .title {
+    font-size: clamp(1.125rem, 1.35vw, 1.3rem);
+  }
+
+  .body {
+    font-size: clamp(0.875rem, 0.95vw, 0.9375rem);
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 780px) {
+  .card {
+    row-gap: 0.75rem;
+    padding: 1.15rem 1.25rem;
+  }
+
+  .icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
+
+/* —— Tablet: globe —— */
+@media (min-width: 640px) {
+  .globeWrap {
+    width: 14rem;
+    top: -4.5rem;
+    right: -1rem;
+  }
+}
+
+/* ——— Below 1024px: header + globe ——— */
+@media (max-width: 1023px) {
+  /* flow-root contains the floated globe */
+  .headRow {
+    display: flow-root;
+    margin-bottom: var(--section-head-gap);
+  }
+
+  /*
+   * Phones: the globe floats beside the title and rises into the section's
+   * top padding, so it decorates existing space instead of adding a row.
+   * shape-outside lets the title wrap around the sphere, not its box.
+   */
+  .globeWrap {
+    position: relative;
+    top: auto;
+    right: auto;
+    float: right;
+    width: clamp(5.5rem, 26vw, 7rem);
+    max-width: none;
+    margin: calc(-0.5 * var(--section-pad-y)) 0.25rem 0.25rem 0.75rem;
+    shape-outside: circle(50%);
+    shape-margin: 0.5rem;
+    opacity: 1;
+    overflow: visible;
+  }
+}
+
+/* Phones: full-width title, then the description with the globe beside it. */
+@media (max-width: 639px) {
+  .headRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.85rem;
+    align-items: center;
+  }
+
+  .header {
+    display: contents;
+  }
+
+  .headRow h2 {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .headRow p {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .globeWrap {
+    float: none;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    --globe-w: clamp(7rem, 34vw, 9rem);
+    width: var(--globe-w);
+    margin: 0 var(--orbit-room) 0 0;
+    shape-outside: none;
+  }
+}
+
+/* Small phones: the description keeps the full width and runs over the globe. */
+@media (max-width: 425px) {
+  .headRow p {
+    position: relative;
+    z-index: 1;
+    grid-column: 1 / -1;
+  }
+
+  /* z-index: auto drops the globe's stacking context so the play / pause
+     badge (z-index 2) stays above the text and clickable. */
+  .globeWrap {
+    grid-column: 1 / -1;
+    justify-self: end;
+    z-index: auto;
+  }
+}
+
+/* Tablet: header + globe side by side, like desktop */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .headRow {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .header {
+    flex: 1 1 auto;
+  }
+
+  .headRow {
+    display: flex;
+  }
+
+  .globeWrap {
+    float: none;
+    order: 1;
+    align-self: center;
+    flex: 0 0 auto;
+    --globe-w: clamp(9rem, 22vw, 12rem);
+    width: var(--globe-w);
+    margin: -1rem max(1.5rem, var(--orbit-room)) -1rem 0;
+  }
+}
+
+/* —— Desktop: full-viewport, header + bento grid —— */
 @media (min-width: 1024px) {
   .section {
-    min-height: 100vh;
-    min-height: 100dvh;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -135,98 +399,48 @@
 
   .inner {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     justify-content: center;
-    flex: 1;
-    min-height: 0;
-    padding-block: clamp(1.75rem, 4vh, 3.25rem);
+    gap: clamp(2rem, 6vh, 4rem);
+  }
+
+  .headRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 0;
   }
 
   .header {
-    margin-bottom: clamp(1.25rem, 3.5vh, 2.25rem);
+    flex: 1 1 auto;
   }
 
-  .grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: clamp(0.85rem, 1.6vw, 1.5rem);
-    align-items: start;
+  .globeWrap {
+    position: relative;
+    top: auto;
+    right: auto;
+    flex: 0 0 auto;
+    --globe-w: clamp(11rem, 26vh, 16rem);
+    width: var(--globe-w);
+    margin: calc(var(--globe-w) * -0.22) max(3%, var(--orbit-room)) calc(var(--globe-w) * -0.18) 0;
+    opacity: 1;
+    order: 1;
   }
 
-  .item {
-    padding-inline: clamp(0.2rem, 0.6vw, 0.55rem);
-  }
-
-  .index {
-    height: clamp(2.35rem, 5.5vh, 3.35rem);
-    margin-bottom: clamp(0.55rem, 1.2vh, 0.85rem);
-  }
-
-  .indexGlyph {
-    font-size: clamp(3.6rem, 8.5vh, 5.25rem);
-  }
-
-  .title {
-    font-size: clamp(0.95rem, 1.05vw, 1.15rem);
-  }
-
-  .body {
-    margin-top: 0.45rem;
-    font-size: clamp(0.8125rem, 0.9vw, 0.9375rem);
-    max-width: 24ch;
-    line-height: 1.45;
-  }
 }
 
-@media (min-width: 1400px) {
-  .index {
-    height: clamp(2.75rem, 5vh, 3.6rem);
-  }
-
-  .indexGlyph {
-    font-size: clamp(4.25rem, 7.5vh, 5.75rem);
-  }
-
-  .title {
-    font-size: var(--font-18);
-  }
-
-  .body {
-    font-size: var(--font-14);
-    max-width: 26ch;
-  }
-}
-
-/* Short laptop viewports — keep everything in one snap frame */
 @media (min-width: 1024px) and (max-height: 780px) {
   .inner {
-    padding-block: clamp(1.25rem, 3vh, 2rem);
-  }
-
-  .header {
-    margin-bottom: clamp(0.85rem, 2.5vh, 1.35rem);
-  }
-
-  .index {
-    height: clamp(2rem, 4.5vh, 2.6rem);
-    margin-bottom: 0.45rem;
-  }
-
-  .indexGlyph {
-    font-size: clamp(3.1rem, 7vh, 4.1rem);
-  }
-
-  .body {
-    margin-top: 0.35rem;
-    line-height: 1.4;
+    gap: clamp(1.5rem, 4vh, 2.5rem);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .item {
-    animation: none;
-  }
-
-  .indexGlyph {
-    transition: none;
+/* Desktop story only: the section is a full-viewport crossfade panel */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .section {
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 }

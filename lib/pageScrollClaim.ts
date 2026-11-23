@@ -1,9 +1,9 @@
-type ScrollOwner = "features" | "journey";
+type ScrollOwner = "features" | "journey" | "scrollytelling";
 
 let owner: ScrollOwner | null = null;
 let snapLockUntil = 0;
 
-/** Interactive sections (dial / journey) claim wheel so page snap stands down. */
+/** Interactive / scrubbed regions claim wheel so page snap stands down. */
 export function claimPageScroll(next: ScrollOwner) {
   owner = next;
 }
@@ -28,16 +28,6 @@ export function isPageSnapLocked() {
   return performance.now() < snapLockUntil;
 }
 
-/** Ask the page snapper to move one section (after an interactive section finishes). */
-export function requestPageSnap(direction: 1 | -1, fromId?: string) {
-  lockPageSnapBriefly();
-  window.dispatchEvent(
-    new CustomEvent("tp-section-snap", {
-      detail: { direction, fromId },
-    }),
-  );
-}
-
 export function notifySnapArrive(id: string) {
   window.dispatchEvent(
     new CustomEvent("tp-section-arrive", { detail: { id } }),
@@ -52,4 +42,31 @@ export function requestNavStep(direction: 1 | -1) {
   window.dispatchEvent(
     new CustomEvent("tp-nav-step", { detail: { direction } }),
   );
+}
+
+/* ——— Section snap targets (shared by SectionSnap and SectionNavButtons) ——— */
+
+export function snapTargets(): HTMLElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>("[data-snap-section]"),
+  );
+}
+
+/** Snap target whose middle is closest to just above mid-viewport. */
+export function nearestIndex(sections: HTMLElement[]) {
+  const probe = window.scrollY + window.innerHeight * 0.45;
+  let best = 0;
+  let bestDist = Number.POSITIVE_INFINITY;
+
+  sections.forEach((el, i) => {
+    const top = window.scrollY + el.getBoundingClientRect().top;
+    const mid = top + el.offsetHeight / 2;
+    const dist = Math.abs(mid - probe);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  });
+
+  return best;
 }

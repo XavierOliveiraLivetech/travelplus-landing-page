@@ -48,7 +48,6 @@
 }
 
 .intro {
-  max-width: 40rem;
   margin-bottom: 2rem;
 }
 
@@ -65,26 +64,45 @@
   font-size: var(--font-18);
 }
 
-.empty {
-  color: var(--ink-muted);
-}
-
 .layout {
   display: grid;
   gap: 1.5rem;
 }
 
-.planPicker {
+.column {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
   border: 1px solid var(--linha);
   border-radius: var(--radius-lg);
   background: var(--branco);
-  padding: 1.25rem;
+  padding: 1.5rem;
+}
+
+.card > .sectionLabel {
+  margin-bottom: 0;
+}
+
+.includedLabel {
+  margin: 0.75rem 0 0;
+  font-size: var(--font-12);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-muted);
 }
 
 .sectionLabel {
   margin: 0 0 0.75rem;
   font-size: var(--font-12);
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--ink-muted);
@@ -124,6 +142,11 @@
 }
 
 .planOptionName {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.planOptionActive .planOptionName {
   font-weight: 700;
   color: var(--brand-blue);
 }
@@ -131,12 +154,6 @@
 .planOptionPrice {
   font-size: var(--font-14);
   color: var(--ink-muted);
-}
-
-.duracaoBlock {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--linha);
 }
 
 .duracaoOptions {
@@ -164,30 +181,34 @@
   background: color-mix(in srgb, var(--brand-orange) 8%, var(--branco));
 }
 
-.priceSummary {
-  margin: 0.75rem 0 0;
-  font-size: var(--font-14);
+.duracaoOption strong {
+  font-weight: 500;
   color: var(--ink-soft);
 }
 
+.duracaoActive strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.required {
+  color: #b42318;
+  text-decoration: none;
+  border: 0;
+}
+
 .highlights {
-  margin: 1.25rem 0 0;
+  margin: 0;
   padding-left: 1.1rem;
   color: var(--ink-soft);
   font-size: var(--font-14);
   line-height: 1.5;
 }
 
-.formPanel {
-  border: 1px solid var(--linha);
-  border-radius: var(--radius-lg);
-  background: var(--branco);
-  padding: 1.5rem;
-}
-
 .formTitle {
   margin: 1.25rem 0 0;
-  font-size: var(--font-16);
+  font-size: var(--font-18);
+  font-weight: 700;
   color: var(--brand-blue);
 }
 
@@ -196,7 +217,7 @@
 }
 
 .formHint {
-  margin: 0.35rem 0 1rem;
+  margin: -0.4rem 0 0.25rem;
   font-size: var(--font-14);
   color: var(--ink-muted);
   line-height: 1.5;
@@ -204,7 +225,7 @@
 
 .form {
   display: grid;
-  gap: 0.75rem;
+  gap: 1.5rem;
 }
 
 .field {
@@ -214,8 +235,8 @@
 }
 
 .field > span:first-child {
-  font-weight: 700;
-  color: var(--brand-blue);
+  font-weight: 500;
+  color: var(--ink);
 }
 
 .fieldHint {
@@ -262,7 +283,6 @@
 }
 
 .submit {
-  margin-top: 0.5rem;
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--brand-orange);
@@ -285,7 +305,7 @@
 }
 
 .success {
-  margin-bottom: 1rem;
+  margin: 0;
   border-radius: var(--radius-sm);
   background: #ecfdf3;
   color: #027a48;
@@ -322,6 +342,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .submit,
+  .backLink {
+    transition: none;
+  }
+
   .submit:hover:not(:disabled) {
     transform: none;
   }

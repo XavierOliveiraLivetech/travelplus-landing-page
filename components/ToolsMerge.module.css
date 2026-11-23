@@ -1,0 +1,1214 @@
+/* ——— Closing CTA visual: many sites → one TravelPlus platform ——— */
+
+/*
+  Same mock-UI kit as PlatformFlow ("Produto") and StepVisuals ("Como
+  funciona"). Those cards are sized in rem on a 0.8125rem (13px) base; this
+  one has to scale with its stage, so every size below is the kit's rem value
+  converted to em on that same 13px base (value / 0.8125):
+
+    0.5625rem → 0.692em   0.6875rem → 0.846em   0.75rem → 0.923em
+    0.95rem   → 1.17em    1rem      → 1.23em    1.15rem → 1.415em
+    1.55rem   → 1.9em     1.9rem    → 2.34em    2.15rem → 2.65em
+
+  At full size the platform card renders 1:1 with the other sections.
+*/
+
+.visual {
+  --violet: var(--ui-violet);
+  --violet-soft: var(--ui-violet-soft);
+  --orange-soft: var(--ui-orange-soft);
+  --success: var(--ui-success);
+  --success-soft: var(--ui-success-soft);
+  --field-bg: var(--ui-field-bg);
+  --soft-line: var(--ui-line);
+
+  position: relative;
+  width: 100%;
+  container-type: inline-size;
+  color: var(--ink);
+  line-height: 1.3;
+  user-select: none;
+}
+
+/* Soft brand glow behind the desk (same as the product demo) */
+.visual::before {
+  content: "";
+  position: absolute;
+  inset: 8% 4% 14%;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--brand-orange) 22%, transparent),
+    transparent
+  );
+  filter: blur(24px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  aspect-ratio: 1 / 0.86;
+  max-height: min(31rem, 60vh);
+  margin-inline: auto;
+}
+
+/*
+ * Visitor paused the demo (MotionToggle): a soft cross-fade to the finished
+ * platform. Only opacity eases — the open tabs fade out where they are, the
+ * platform fades in at full size, nothing flies or bounces on the way.
+ */
+.paused,
+.paused *,
+.paused *::before,
+.paused *::after {
+  animation: none !important;
+}
+
+.paused .win {
+  transform: translate(-50%, -50%) rotate(var(--r)) !important;
+  transition:
+    opacity 450ms var(--ease-out),
+    visibility 0s linear 450ms !important;
+}
+
+.paused .platform {
+  transition:
+    opacity 550ms var(--ease-out),
+    visibility 0s !important;
+}
+
+/* Paused mid-intro: the big centred logo glides back into the header */
+.paused .logo {
+  transition: transform 550ms var(--ease-in-out) !important;
+}
+
+/* Pause / play badge in the platform card's app bar, right of the logo.
+   --toggle-x/y (right edge / vertical centre of that bar) come from JS. */
+.motionToggle {
+  position: absolute;
+  left: var(--toggle-x, auto);
+  top: var(--toggle-y, auto);
+  z-index: 40;
+  transform: translate(-100%, -50%);
+}
+
+/* Desktop: the CTA shares the screen with the header and the two-tier
+   footer. Cap the height by what is left of the viewport and shrink the
+   width with it (the container drives every em), so the stage keeps its
+   proportions instead of being squashed. */
+@media (min-width: 1024px) {
+  .visual {
+    width: min(100%, calc(min(31rem, 60vh, 100dvh - 19rem) / 0.86));
+    margin-inline: auto;
+  }
+
+  .stage {
+    max-height: none;
+  }
+}
+
+/* Names and titles: weight 600 in brand purple everywhere in the kit */
+.win b,
+.platform b {
+  font-weight: 600;
+  color: var(--brand-blue);
+}
+
+/* ——— Shared bits (same as PlatformFlow / StepVisuals) ——— */
+
+.dots,
+.winDots {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0.308em;
+}
+
+.dots i,
+.winDots i {
+  width: 0.49em;
+  height: 0.49em;
+  border-radius: 50%;
+  background: var(--linha);
+}
+
+/* .chipSoft in StepVisuals / .pillIncluded in PlatformFlow */
+.chipSoft {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.37em;
+  padding: 0.246em 0.615em;
+  border-radius: 999px;
+  background: var(--orange-soft);
+  color: var(--brand-orange-dark);
+  font-size: 0.846em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Icon tile — .panelIcon in PlatformFlow / .hotelIcon in StepVisuals */
+.winIcon,
+.pdfIcon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2.34em;
+  height: 2.34em;
+  border-radius: var(--ui-radius-ctl);
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+.winIcon svg,
+.pdfIcon svg {
+  width: 1.23em;
+  height: 1.23em;
+}
+
+/* Uppercase micro-label — .sceneLabel / .eyebrow */
+.ticketLabel {
+  color: var(--ink-muted);
+  font-size: 0.846em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ——— Separate browser windows ——— */
+
+.win {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  z-index: calc(var(--i) + 1);
+  display: flex;
+  flex-direction: column;
+  width: 47%;
+  font-size: clamp(0.5rem, 1.7cqw, 0.72rem);
+  border: 1px solid var(--soft-line);
+  border-radius: var(--ui-radius-box);
+  background: var(--branco);
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgb(16 0 48 / 0.18),
+    0 18px 36px -16px rgb(16 0 48 / 0.6);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) rotate(var(--r)) scale(0.82) translateY(1.2rem);
+  transition:
+    opacity 320ms var(--ease-out),
+    transform 520ms var(--ease-out),
+    box-shadow 300ms var(--ease-out),
+    visibility 0s linear 520ms;
+}
+
+.winOpen {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) rotate(var(--r));
+  transition:
+    opacity 260ms var(--ease-out),
+    transform 560ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    box-shadow 300ms var(--ease-out),
+    visibility 0s;
+}
+
+/* The tab that was just opened: focused, deeper shadow */
+.winFront {
+  box-shadow:
+    0 1px 2px rgb(16 0 48 / 0.18),
+    0 22px 44px -16px rgb(16 0 48 / 0.7);
+}
+
+/* Merge: every window is pulled into the centre and swallowed */
+.visual[data-phase="merge"] .win {
+  left: 50%;
+  top: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(0deg) scale(0.3);
+  transition:
+    left 720ms var(--ease-in-out) calc(var(--i) * 45ms),
+    top 720ms var(--ease-in-out) calc(var(--i) * 45ms),
+    transform 720ms var(--ease-in-out) calc(var(--i) * 45ms),
+    opacity 320ms ease-in calc(var(--i) * 45ms + 420ms),
+    visibility 0s linear 1200ms;
+}
+
+/* Same top bar as the "Configure a agência" card: dots + grey URL pill */
+.winBar {
+  display: flex;
+  align-items: center;
+  gap: 0.74em;
+  padding: 0.55em 0.74em;
+  border-bottom: 1px solid var(--linha);
+  background: var(--branco);
+}
+
+.winUrl {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.43em;
+  min-width: 0;
+  padding: 0.345em 0.68em;
+  border-radius: 999px;
+  background: var(--papel);
+  color: var(--ink-soft);
+  font-size: 0.846em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.winUrl svg {
+  flex-shrink: 0;
+  width: 1.02em;
+  height: 1.02em;
+  color: var(--success);
+}
+
+.winClose {
+  flex-shrink: 0;
+  width: 0.95em;
+  height: 0.95em;
+  color: var(--ink-muted);
+}
+
+.winBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.615em;
+  padding: 0.8em 0.923em 0.923em;
+}
+
+.winHead {
+  display: flex;
+  align-items: center;
+  gap: 0.68em;
+  min-width: 0;
+}
+
+.winHead b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Airline window: outbound + return, each the platform's ticket */
+.tickets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+}
+
+.ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.308em;
+}
+
+/* Line list — same row as the price breakdown */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.37em;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.74em;
+  min-width: 0;
+  padding: 0.43em 0.615em;
+  border: 1px solid var(--linha);
+  border-radius: var(--ui-radius-ctl);
+  color: var(--ink-soft);
+  font-size: 0.923em;
+}
+
+.row > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row b {
+  flex-shrink: 0;
+}
+
+.lines {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.lines i {
+  display: block;
+  height: 0.5em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-blue) 8%, var(--linha));
+}
+
+/* Hotel listing: photo left, details right (same shape as the platform's hotel card) */
+.hotelCard {
+  display: flex;
+  gap: 0.74em;
+  min-width: 0;
+}
+
+.hotelCardPhoto {
+  flex-shrink: 0;
+  width: 5.2em;
+  height: 4.6em;
+  border-radius: var(--ui-radius-ctl);
+  background:
+    radial-gradient(circle at 78% 28%, #ffd58a 0 0.6em, transparent 0.65em),
+    linear-gradient(180deg, #8fd0ef 0 52%, #2f9fcf 52% 76%, #f1dcb0 76%);
+}
+
+.hotelCardInfo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.123em;
+  min-width: 0;
+}
+
+.hotelCardInfo b,
+.hotelCardInfo small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hotelCardInfo small {
+  color: var(--ink-muted);
+  font-size: 0.846em;
+}
+
+.hotelCardStars,
+.stars {
+  color: var(--brand-orange);
+  font-size: 0.846em;
+  letter-spacing: 0.05em;
+}
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.43em;
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.123em;
+  padding: 0.43em 0.55em;
+  border: 1px solid var(--linha);
+  border-radius: var(--ui-radius-ctl);
+}
+
+.plan small {
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 0.846em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same field as PlatformFlow's .input */
+.input {
+  padding: 0.43em 0.74em;
+  border: 1px solid var(--linha);
+  border-radius: var(--ui-radius-ctl);
+  background: var(--field-bg);
+  color: var(--brand-blue);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* Someone else's checkout: neutral, not the TravelPlus orange */
+.fakeBtn {
+  flex-shrink: 0;
+  padding: 0.37em 0.985em;
+  border-radius: var(--ui-radius-ctl);
+  background: var(--ink-muted);
+  color: var(--branco);
+  font-weight: 700;
+}
+
+/* Quote put together by hand, exported to PDF */
+.doc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+}
+
+.pdfBadge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0.15em 0.45em;
+  border-radius: 0.3em;
+  background: #d93a2f;
+  color: var(--branco);
+  font-size: 0.846em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.docTable {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--linha);
+  font-size: 0.923em;
+}
+
+.docTable > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.74em;
+  padding: 0.3em 0.1em;
+  border-bottom: 1px solid var(--linha);
+  color: var(--ink-soft);
+}
+
+.docTable > span b {
+  font-weight: 500;
+}
+
+.docTable > span:last-child {
+  border-bottom: 0;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.docTable > span:last-child b {
+  font-weight: 700;
+}
+
+/* ——— The merge "core" — a bright pulse where the windows collapse ——— */
+
+.core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 20;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--branco) 85%, transparent),
+    color-mix(in srgb, var(--brand-orange) 45%, transparent) 45%,
+    transparent
+  );
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2);
+  pointer-events: none;
+}
+
+.visual[data-phase="merge"] .core {
+  animation: corePulse 1050ms var(--ease-out) 380ms both;
+}
+
+@keyframes corePulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.2);
+  }
+}
+
+/* ——— TravelPlus: one window, every tool ——— */
+
+.platform {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 38rem);
+  /* Tops out at the kit's 0.8125rem base */
+  /* 2.25cqw = 13px on the 36rem CTA column, so it matches the other sections */
+  font-size: clamp(0.56rem, 2.25cqw, 0.8125rem);
+  border: 1px solid var(--soft-line);
+  border-radius: var(--ui-radius-card);
+  background: var(--branco);
+  overflow: hidden;
+  /* --ui-card-shadow, deepened: it sits on the dark CTA band */
+  box-shadow:
+    0 1px 2px rgb(16 0 48 / 0.2),
+    0 30px 60px -24px rgb(16 0 48 / 0.75);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) scale(0.6);
+  transition:
+    opacity 380ms var(--ease-out),
+    transform 480ms var(--ease-out),
+    visibility 0s linear 480ms;
+}
+
+.visual[data-phase="brand"] .platform,
+.visual[data-phase="dock"] .platform,
+.visual[data-phase="platform"] .platform {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 360ms var(--ease-out),
+    transform 620ms cubic-bezier(0.34, 1.35, 0.64, 1),
+    visibility 0s;
+}
+
+.visual[data-phase="reset"] .platform {
+  transform: translate(-50%, -50%) scale(0.96);
+  transition:
+    opacity 420ms var(--ease-out),
+    transform 520ms var(--ease-out),
+    visibility 0s linear 520ms;
+}
+
+/* Same app bar as the product demo */
+.appBar {
+  display: flex;
+  align-items: center;
+  gap: 1.046em;
+  padding: 0.86em 1.17em;
+  border-bottom: 1px solid var(--linha);
+}
+
+.logo {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: auto;
+  height: 1.9em;
+  object-fit: contain;
+  transform-origin: center;
+}
+
+/* Intro: the logo sits big in the middle of the empty card, growing with it… */
+.visual[data-phase="brand"] .logo {
+  transform: translate(var(--lx), var(--ly)) scale(var(--ls));
+  animation: logoGrow 700ms var(--ease-out);
+}
+
+/* …then shrinks back into its place in the header */
+.visual[data-phase="dock"] .logo {
+  transition: transform 700ms var(--ease-in-out);
+}
+
+/* The page stays empty until the logo has docked */
+.visual[data-phase="brand"] .trip,
+.visual[data-phase="dock"] .trip {
+  visibility: hidden;
+}
+
+@keyframes logoGrow {
+  from {
+    opacity: 0;
+    transform: translate(var(--lx), var(--ly)) scale(calc(var(--ls) * 0.55));
+  }
+}
+
+/* ——— "A sua viagem": timeline on the left, price/payment/quote aside ——— */
+
+.trip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-areas: "main aside";
+  gap: 0.86em 1.046em;
+  padding: 1.23em 1.23em 1.35em;
+  background: var(--branco);
+}
+
+/* Timeline */
+
+.timeline {
+  grid-area: main;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.86em;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The line connecting the step icons — same tint as the progress track */
+.timeline::before {
+  content: "";
+  position: absolute;
+  top: 1em;
+  bottom: 1em;
+  left: 0.95em;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-blue) 9%, var(--linha));
+  transform-origin: top;
+}
+
+.tlItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr);
+  column-gap: 0.68em;
+  row-gap: 0.43em;
+  align-items: center;
+}
+
+.tlIcon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.9em;
+  height: 1.9em;
+  border-radius: 50%;
+  background: var(--brand-blue);
+  color: var(--branco);
+  box-shadow: 0 0 0 3px var(--branco);
+}
+
+.tlIcon svg {
+  width: 0.985em;
+  height: 0.985em;
+}
+
+/* Title row is exactly the icon's height, so the aside can offset by it */
+.tlTitle {
+  display: flex;
+  align-items: center;
+  height: 1.9em;
+  gap: 0.5em;
+  min-width: 0;
+}
+
+/* Inner boxes: same as .block / .paySummary in the product demo */
+.flight,
+.hotel,
+.addons,
+.priceBox,
+.pdfBox {
+  min-width: 0;
+  border: 1px solid var(--linha);
+  border-radius: var(--ui-radius-box);
+  background: var(--branco);
+  overflow: hidden;
+}
+
+.flight,
+.hotel,
+.addons {
+  grid-column: 2;
+}
+
+/* Flight — same route as the booking card in "Como funciona" */
+.flight {
+  display: flex;
+  flex-direction: column;
+}
+
+.flightMain {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.74em;
+  padding: 0.68em 0.923em 0.6em;
+}
+
+.flightEnd {
+  display: flex;
+  flex-direction: column;
+  gap: 0.123em;
+  line-height: 1.15;
+}
+
+.flightEnd b {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 1.415em;
+  letter-spacing: 0.02em;
+}
+
+.flightEnd small {
+  color: var(--ink-muted);
+  font-size: 0.846em;
+}
+
+.flightEndRight {
+  align-items: flex-end;
+}
+
+.flightPath {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15em;
+  margin-bottom: 0.3em;
+  color: var(--ink-muted);
+  font-size: 0.846em;
+}
+
+.flightPath i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 1.2em;
+}
+
+/* Dotted line + orange plane, like the arc in "Como funciona" */
+.flightPath i::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1.5px dotted color-mix(in srgb, var(--violet) 40%, var(--linha));
+}
+
+.flightPath svg {
+  position: relative;
+  box-sizing: content-box;
+  width: 1.25em;
+  height: 1.25em;
+  padding: 0 0.25em;
+  background: var(--branco);
+  color: var(--brand-orange);
+}
+
+.flightFoot {
+  display: flex;
+  gap: 0.4em;
+  padding: 0.5em 0.923em;
+  border-top: 1px solid var(--linha);
+}
+
+/* Hotel */
+.hotel {
+  display: flex;
+  align-items: center;
+  gap: 0.74em;
+  padding: 0.55em;
+}
+
+.hotelPhoto {
+  flex-shrink: 0;
+  width: 4.6em;
+  height: 3.5em;
+  border-radius: var(--ui-radius-ctl);
+  background:
+    radial-gradient(circle at 78% 28%, #ffd58a 0 0.55em, transparent 0.6em),
+    linear-gradient(180deg, #8fd0ef 0 52%, #2f9fcf 52% 76%, #f1dcb0 76%);
+}
+
+.hotelInfo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.123em;
+  min-width: 0;
+}
+
+.hotelInfo b,
+.hotelInfo small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hotelInfo small {
+  color: var(--ink-muted);
+  font-size: 0.846em;
+}
+
+/* Insurance + extras — rows like the extras list in the product demo */
+.addons {
+  display: flex;
+  flex-direction: column;
+  padding: 0.123em 0.923em;
+}
+
+.addon {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.74em;
+  padding: 0.43em 0;
+  color: var(--ink-soft);
+  font-size: 0.923em;
+}
+
+.addon + .addon {
+  border-top: 1px solid var(--linha);
+}
+
+.addon span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.addon b {
+  flex-shrink: 0;
+}
+
+/* Aside: price, payment, quote */
+
+/*
+  Top lines up with the first timeline card (below the 1.9em title row +
+  0.43em gap); the grid stretches it so the bottom meets the last card.
+*/
+.aside {
+  grid-area: aside;
+  display: flex;
+  flex-direction: column;
+  gap: 0.615em;
+  min-width: 0;
+  padding-top: 2.33em;
+}
+
+.priceBox,
+.pdfBox {
+  flex: 1 1 auto;
+}
+
+/* Same as .paySummary in the product demo */
+.priceBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.37em;
+  padding: 0.74em 0.923em 0.8em;
+}
+
+.boxTitle {
+  padding-bottom: 0.55em;
+  margin-bottom: 0.123em;
+  border-bottom: 1px solid var(--linha);
+}
+
+.priceLine,
+.priceTotal {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.74em;
+}
+
+.priceLine {
+  color: var(--ink-soft);
+  font-size: 0.923em;
+}
+
+.priceLine span:last-child {
+  font-weight: 500;
+  color: var(--brand-blue);
+}
+
+/* Same as "Valor total" in "Como funciona" / .payFoot in the product demo */
+.priceTotal {
+  align-items: baseline;
+  margin-top: auto;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--linha);
+}
+
+.priceTotal span {
+  color: var(--ink-muted);
+  font-size: 0.923em;
+  font-weight: 500;
+}
+
+.priceTotal b {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 1.415em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Just the button — no card around it */
+.payBox {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Same buttons as the product demo */
+.btnPrimary,
+.btnSoft {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  border-radius: var(--ui-radius-ctl);
+  white-space: nowrap;
+}
+
+.btnPrimary {
+  gap: 0.49em;
+  min-height: 2.65em;
+  padding: 0 1.23em;
+  background: var(--brand-orange);
+  color: var(--branco);
+  font-weight: 700;
+  box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--brand-orange) 70%, transparent);
+}
+
+.btnPrimary svg {
+  flex-shrink: 0;
+  width: 0.985em;
+  height: 0.985em;
+}
+
+/* Secondary action — .btnSoft ("Reservar") in the product demo */
+.btnSoft {
+  gap: 0.4em;
+  min-height: 2.15em;
+  padding: 0 0.7em;
+  background: var(--orange-soft);
+  color: var(--brand-orange-dark);
+  font-size: 0.923em;
+  font-weight: 600;
+}
+
+.btnSoft svg {
+  flex-shrink: 0;
+  width: 1.07em;
+  height: 1.07em;
+}
+
+.pdfBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55em;
+  padding: 0.615em 0.74em 0.68em;
+}
+
+.pdfRow {
+  display: flex;
+  align-items: center;
+  gap: 0.68em;
+  min-width: 0;
+}
+
+/* Stacked, so "Enviar por e-mail" never gets clipped at any card width */
+.pdfActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.37em;
+  margin-top: auto;
+}
+
+.pdfText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Phones: the font floor (0.56rem) stops shrinking, so give the card more height */
+@container (max-width: 26rem) {
+  .stage {
+    aspect-ratio: 1 / 0.98;
+  }
+}
+
+/* Small cards (phones): drop secondary detail so it still fits the stage */
+@container (max-width: 30rem) {
+  .trip {
+    gap: 0.7em;
+    padding: 0.86em 0.86em 0.95em;
+  }
+
+  .btnSoft {
+    min-height: 1.9em;
+  }
+
+  .aside {
+    gap: 0.45em;
+  }
+
+  .hotelPhoto {
+    display: none;
+  }
+}
+
+/* ——— Entrance: steps land one by one, then price, payment and the quote ——— */
+
+.running[data-phase="platform"] .timeline::before {
+  animation: lineDraw 1100ms var(--ease-out) 200ms both;
+}
+
+.running[data-phase="platform"] .tlItem,
+.running[data-phase="platform"] .priceBox,
+.running[data-phase="platform"] .payBox,
+.running[data-phase="platform"] .pdfBox {
+  animation: popIn 440ms var(--ease-out) var(--at) both;
+}
+
+/* Cursor glides onto "Efetuar pagamento", clicks it, then the booking is confirmed */
+.running[data-phase="platform"] .cursor {
+  animation: cursorClick 1300ms var(--ease-in-out) 2400ms both;
+}
+
+.running[data-phase="platform"] .btnPrimary {
+  animation: press 380ms var(--ease-out) 3250ms both;
+}
+
+.running[data-phase="platform"] .success {
+  animation: successIn 450ms var(--ease-out) 3750ms both;
+}
+
+.running[data-phase="platform"] .successIcon {
+  animation: successPop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) 3900ms both;
+}
+
+/* Reset: the confirmation stays on top while the platform fades out, so the
+   payment page underneath never flashes back before the demo restarts. */
+.running[data-phase="reset"] .success {
+  opacity: 1;
+  visibility: inherit;
+}
+
+@keyframes lineDraw {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.97);
+  }
+}
+
+@keyframes press {
+  40% {
+    transform: scale(0.94);
+    background: var(--brand-orange-dark);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-orange) 30%, transparent);
+  }
+}
+
+/* Pointer — same artwork, size and motion as the product demo (PlatformFlow) */
+.cursor {
+  position: absolute;
+  top: 50%;
+  left: 60%;
+  z-index: 5;
+  width: 1.17em;
+  height: 1.48em;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgb(24 0 72 / 0.35));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 24' fill='none'%3E%3Cpath d='M1.2 1.1 16.4 11.2l-6.1 1.5 3.1 7.4-2.7 1.1-3.1-7.3-4.8 4.5Z' fill='%23fff' stroke='%231a1240' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  --from: -9em, -7em;
+}
+
+@keyframes cursorClick {
+  0% {
+    opacity: 0;
+    transform: translate(var(--from));
+  }
+  12% {
+    opacity: 1;
+    transform: translate(var(--from));
+  }
+  62% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.82);
+  }
+  78% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+}
+
+/* "Reserva confirmada" overlay — same as the product demo */
+.success {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.43em;
+  padding: 1.25rem;
+  text-align: center;
+  background: color-mix(in srgb, var(--branco) 94%, transparent);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  visibility: hidden;
+}
+
+.success b {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 1.415em;
+}
+
+.successIcon {
+  display: grid;
+  place-items: center;
+  width: 3.2em;
+  height: 3.2em;
+  margin-bottom: 0.308em;
+  border-radius: 50%;
+  background: var(--success);
+  color: var(--branco);
+  box-shadow: 0 0 0 0.46em var(--success-soft);
+}
+
+.successIcon svg {
+  width: 1.6em;
+  height: 1.6em;
+}
+
+@keyframes successIn {
+  from {
+    opacity: 0;
+    visibility: visible;
+  }
+  to {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@keyframes successPop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .win,
+  .winOpen,
+  .platform {
+    transition: none;
+  }
+}

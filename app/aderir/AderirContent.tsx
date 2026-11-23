@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { returnHref } from "@/lib/returnSection";
 import {
   CONTACT_EMAIL,
   DURACAO_LABELS,
@@ -12,10 +13,10 @@ import {
   type Plano,
 } from "@/lib/site-data";
 import styles from "./aderir.module.css";
+import { assetPath } from "@/lib/assetPath";
 
 type AderirContentProps = {
   planos: Plano[];
-  initialPlanoSlug: string | null;
 };
 
 type FieldError = { id: string; message: string };
@@ -28,18 +29,87 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) {
+/**
+ * One labelled form input. `error` is the current validation message (null
+ * when valid); fields that are never validated pass `validated={false}` so
+ * they get no aria-invalid / aria-describedby.
+ */
+function Field({
+  id,
+  label,
+  required = false,
+  type,
+  autoComplete,
+  placeholder,
+  hint,
+  error = null,
+  validated = true,
+}: {
+  id: string;
+  label: string;
+  required?: boolean;
+  type?: string;
+  autoComplete?: string;
+  placeholder?: string;
+  hint?: string;
+  error?: string | null;
+  validated?: boolean;
+}) {
+  const hintId = hint ? `${id}-hint` : undefined;
+  return (
+    <label className={styles.field} htmlFor={id}>
+      <span>
+        {label}
+        {required ? (
+          <>
+            {" "}
+            <abbr className={styles.required} title="Obrigatório" aria-hidden="true">
+              *
+            </abbr>
+          </>
+        ) : null}
+      </span>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        required={required}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        aria-invalid={validated ? Boolean(error) : undefined}
+        aria-describedby={
+          validated ? (error ? `${id}-error` : hintId) : undefined
+        }
+      />
+      {hint ? (
+        <span id={hintId} className={styles.fieldHint}>
+          {hint}
+        </span>
+      ) : null}
+      {error ? <em id={`${id}-error`}>{error}</em> : null}
+    </label>
+  );
+}
+
+export function AderirContent({ planos }: AderirContentProps) {
   const defaultSlug =
-    initialPlanoSlug && planos.some((p) => p.slug === initialPlanoSlug)
-      ? initialPlanoSlug
-      : planos.find((p) => !p.requires_sales_contact)?.slug ?? planos[0]?.slug ?? "";
+    planos.find((p) => !p.requires_sales_contact)?.slug ?? planos[0]?.slug ?? "";
 
   const [selectedSlug, setSelectedSlug] = useState(defaultSlug);
+  // Preselect the plan from ?plano= (e.g. /aderir?plano=enterprise).
+  useEffect(() => {
+    const plano = new URLSearchParams(window.location.search).get("plano")?.trim();
+    if (plano && planos.some((p) => p.slug === plano)) setSelectedSlug(plano);
+  }, [planos]);
   const [duracao, setDuracao] = useState<DuracaoSubscricao>("mensal");
   const [errors, setErrors] = useState<FieldError[]>([]);
-  const [submitting, setSubmitting] = useState(false);
   const [successMailto, setSuccessMailto] = useState<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement | null>(null);
+  // "Voltar ao site" returns to the section the visitor came from.
+  const [backHref, setBackHref] = useState("/");
+  useEffect(() => {
+    setBackHref(returnHref());
+  }, []);
 
   const selectedPlano = useMemo(
     () => planos.find((p) => p.slug === selectedSlug) ?? null,
@@ -144,7 +214,6 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
     }
 
     const formData = new FormData(form);
-    setSubmitting(true);
 
     let mailto = "";
 
@@ -193,7 +262,6 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
     }
 
     setSuccessMailto(mailto);
-    setSubmitting(false);
 
     try {
       window.location.href = mailto;
@@ -208,7 +276,7 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
         <div className={styles.headerInner}>
           <Link href="/" className={styles.logoLink} aria-label="TravelPlus">
             <Image
-              src="/brand/logo-mark.png"
+              src={assetPath("/brand/logo-mark.png")}
               alt="TravelPlus"
               width={140}
               height={56}
@@ -216,7 +284,7 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
               priority
             />
           </Link>
-          <Link href="/" className={styles.backLink}>
+          <Link href={backHref} className={styles.backLink}>
             ← Voltar ao site
           </Link>
         </div>
@@ -226,14 +294,13 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
         <div className={styles.intro}>
           <h1 className={styles.title}>Aderir ao TravelPlus</h1>
           <p className={styles.lead}>
-            Escolha o plano e envie o pedido. Vamos abrir o seu cliente de email
-            com os dados pré-preenchidos. Se preferir, pode copiar o pedido e
-            enviar manualmente para a nossa equipa.
+            Escolha o plano ideal para a sua agência e envie o pedido. Nós tratamos do resto.
           </p>
         </div>
 
         <div className={styles.layout}>
-          <aside className={styles.planPicker}>
+          <aside className={styles.column}>
+            <div className={styles.card}>
             <h2 className={styles.sectionLabel}>Plano</h2>
             <ul className={styles.planList}>
               {planos.map((plano) => {
@@ -263,8 +330,20 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
               })}
             </ul>
 
+            {selectedPlano ? (
+              <>
+                <h3 className={styles.includedLabel}>Incluído no plano</h3>
+                <ul className={styles.highlights}>
+                  {selectedPlano.feature_highlights.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            </div>
+
             {selectedPlano && !isEnterprise ? (
-              <div className={styles.duracaoBlock}>
+              <div className={styles.card}>
                 <h2 className={styles.sectionLabel}>Duração</h2>
                 <div className={styles.duracaoOptions}>
                   {(Object.keys(DURACAO_LABELS) as DuracaoSubscricao[]).map(
@@ -297,25 +376,11 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
                     },
                   )}
                 </div>
-                {selectedPrice !== null ? (
-                  <p className={styles.priceSummary}>
-                    Total: <strong>{formatPlanoPrice(selectedPrice)}</strong> (
-                    {DURACAO_LABELS[duracao].toLowerCase()})
-                  </p>
-                ) : null}
               </div>
-            ) : null}
-
-            {selectedPlano ? (
-              <ul className={styles.highlights}>
-                {selectedPlano.feature_highlights.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
             ) : null}
           </aside>
 
-          <section className={styles.formPanel}>
+          <section className={styles.column}>
             {successMailto ? (
               <div className={styles.success} role="status">
                 <p>
@@ -353,205 +418,107 @@ export function AderirContent({ planos, initialPlanoSlug }: AderirContentProps) 
               ) : null}
 
               {isEnterprise ? (
-                <>
+                <div className={styles.card}>
                   <h2 className={styles.formTitle}>Pedido Enterprise</h2>
                   <p className={styles.formHint}>
-                    Preencha os dados. Ao enviar, abrimos o seu cliente de email
-                    com o pedido pré-preenchido para {SALES_EMAIL}.
+                    Os campos marcados com{" "}
+                    <span className={styles.required}>*</span> são obrigatórios.
                   </p>
-                  <label className={styles.field} htmlFor="agency_name">
-                    <span>Nome da agência</span>
-                    <input
-                      id="agency_name"
-                      name="agency_name"
-                      required
-                      autoComplete="organization"
-                      aria-invalid={Boolean(fieldError("agency_name"))}
-                      aria-describedby={
-                        fieldError("agency_name")
-                          ? "agency_name-error"
-                          : undefined
-                      }
-                    />
-                    {fieldError("agency_name") ? (
-                      <em id="agency_name-error">{fieldError("agency_name")}</em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="contact_name">
-                    <span>Nome de contacto</span>
-                    <input
-                      id="contact_name"
-                      name="contact_name"
-                      required
-                      autoComplete="name"
-                      aria-invalid={Boolean(fieldError("contact_name"))}
-                      aria-describedby={
-                        fieldError("contact_name")
-                          ? "contact_name-error"
-                          : undefined
-                      }
-                    />
-                    {fieldError("contact_name") ? (
-                      <em id="contact_name-error">
-                        {fieldError("contact_name")}
-                      </em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="contact_email">
-                    <span>Email</span>
-                    <input
-                      id="contact_email"
-                      name="contact_email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      aria-invalid={Boolean(fieldError("contact_email"))}
-                      aria-describedby={
-                        fieldError("contact_email")
-                          ? "contact_email-error"
-                          : undefined
-                      }
-                    />
-                    {fieldError("contact_email") ? (
-                      <em id="contact_email-error">
-                        {fieldError("contact_email")}
-                      </em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="telefone">
-                    <span>Telefone (opcional)</span>
-                    <input
-                      id="telefone"
-                      name="telefone"
-                      type="tel"
-                      autoComplete="tel"
-                    />
-                  </label>
+                  <Field
+                    id="agency_name"
+                    label="Nome da agência"
+                    required
+                    autoComplete="organization"
+                    error={fieldError("agency_name")}
+                  />
+                  <Field
+                    id="contact_name"
+                    label="Nome de contacto"
+                    required
+                    autoComplete="name"
+                    error={fieldError("contact_name")}
+                  />
+                  <Field
+                    id="contact_email"
+                    label="Email"
+                    required
+                    type="email"
+                    autoComplete="email"
+                    error={fieldError("contact_email")}
+                  />
+                  <Field
+                    id="telefone"
+                    label="Telefone"
+                    type="tel"
+                    autoComplete="tel"
+                    validated={false}
+                  />
                   <label className={styles.field} htmlFor="message">
-                    <span>Mensagem (opcional)</span>
+                    <span>Mensagem</span>
                     <textarea id="message" name="message" rows={4} />
                   </label>
-                </>
+                </div>
               ) : (
                 <>
+                <div className={styles.card}>
                   <h2 className={styles.formTitle}>Dados da agência</h2>
                   <p className={styles.formHint}>
-                    Preencha os dados. Ao enviar, abrimos o seu cliente de email
-                    com o pedido pré-preenchido para {CONTACT_EMAIL}.
+                    Os campos marcados com{" "}
+                    <span className={styles.required}>*</span> são obrigatórios.
                   </p>
-                  <label className={styles.field} htmlFor="agency_name">
-                    <span>Nome da agência</span>
-                    <input
-                      id="agency_name"
-                      name="agency_name"
-                      required
-                      autoComplete="organization"
-                      aria-invalid={Boolean(fieldError("agency_name"))}
-                      aria-describedby={
-                        fieldError("agency_name")
-                          ? "agency_name-error"
-                          : undefined
-                      }
-                    />
-                    {fieldError("agency_name") ? (
-                      <em id="agency_name-error">{fieldError("agency_name")}</em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="agency_code">
-                    <span>Código da agência (opcional)</span>
-                    <input
-                      id="agency_code"
-                      name="agency_code"
-                      placeholder="ex.: minha-agencia"
-                      aria-invalid={Boolean(fieldError("agency_code"))}
-                      aria-describedby={
-                        fieldError("agency_code")
-                          ? "agency_code-error"
-                          : "agency_code-hint"
-                      }
-                    />
-                    <span id="agency_code-hint" className={styles.fieldHint}>
-                      Apenas letras, números, hífen (-) e underscore (_).
-                    </span>
-                    {fieldError("agency_code") ? (
-                      <em id="agency_code-error">{fieldError("agency_code")}</em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="email">
-                    <span>Email geral da agência (opcional)</span>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      aria-invalid={Boolean(fieldError("email"))}
-                      aria-describedby={
-                        fieldError("email") ? "email-error" : undefined
-                      }
-                    />
-                    {fieldError("email") ? (
-                      <em id="email-error">{fieldError("email")}</em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="telefone">
-                    <span>Telefone (opcional)</span>
-                    <input
-                      id="telefone"
-                      name="telefone"
-                      type="tel"
-                      autoComplete="tel"
-                    />
-                  </label>
+                  <Field
+                    id="agency_name"
+                    label="Nome da agência"
+                    required
+                    autoComplete="organization"
+                    error={fieldError("agency_name")}
+                  />
+                  <Field
+                    id="agency_code"
+                    label="Código da agência"
+                    placeholder="ex.: minha-agencia"
+                    hint="Apenas letras, números, hífen (-) e underscore (_)."
+                    error={fieldError("agency_code")}
+                  />
+                  <Field
+                    id="email"
+                    label="Email geral da agência"
+                    type="email"
+                    autoComplete="email"
+                    error={fieldError("email")}
+                  />
+                  <Field
+                    id="telefone"
+                    label="Telefone"
+                    type="tel"
+                    autoComplete="tel"
+                    validated={false}
+                  />
+                </div>
 
+                <div className={styles.card}>
                   <h2 className={styles.formTitle}>Administrador</h2>
-                  <label className={styles.field} htmlFor="admin_name">
-                    <span>Nome completo</span>
-                    <input
-                      id="admin_name"
-                      name="admin_name"
-                      required
-                      autoComplete="name"
-                      aria-invalid={Boolean(fieldError("admin_name"))}
-                      aria-describedby={
-                        fieldError("admin_name")
-                          ? "admin_name-error"
-                          : undefined
-                      }
-                    />
-                    {fieldError("admin_name") ? (
-                      <em id="admin_name-error">{fieldError("admin_name")}</em>
-                    ) : null}
-                  </label>
-                  <label className={styles.field} htmlFor="admin_email">
-                    <span>Email</span>
-                    <input
-                      id="admin_email"
-                      name="admin_email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      aria-invalid={Boolean(fieldError("admin_email"))}
-                      aria-describedby={
-                        fieldError("admin_email")
-                          ? "admin_email-error"
-                          : undefined
-                      }
-                    />
-                    {fieldError("admin_email") ? (
-                      <em id="admin_email-error">{fieldError("admin_email")}</em>
-                    ) : null}
-                  </label>
+                  <Field
+                    id="admin_name"
+                    label="Nome completo"
+                    required
+                    autoComplete="name"
+                    error={fieldError("admin_name")}
+                  />
+                  <Field
+                    id="admin_email"
+                    label="Email"
+                    required
+                    type="email"
+                    autoComplete="email"
+                    error={fieldError("admin_email")}
+                  />
+                </div>
                 </>
               )}
 
-              <button
-                type="submit"
-                className={styles.submit}
-                disabled={submitting}
-              >
-                {submitting
-                  ? "A preparar pedido…"
-                  : "Enviar pedido por email"}
+              <button type="submit" className={styles.submit}>
+                Enviar pedido por email
               </button>
             </form>
           </section>

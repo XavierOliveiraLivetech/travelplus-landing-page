@@ -16,32 +16,32 @@ export function formatPlanoPrice(value: number | null): string {
 
 export const HERO = {
   title: "O software que a sua agência precisa para vender mais viagens",
-  lead: "Motor de pesquisa, orçamentos, reservas e gestão — pensado para agências portuguesas que querem trabalhar com mais rapidez e menos fricção.",
+  lead: "Motor de pesquisa, orçamentos, reservas e gestão — pensado para agências que querem trabalhar com mais rapidez e menos fricção.",
 };
 
 export const PROOF = [
-  { value: "Multi-operador", label: "Pesquisa num só fluxo" },
-  { value: "Widget próprio", label: "No site da sua agência" },
-  { value: "Backoffice", label: "Equipas e operação" },
+  { value: "Multi-operador", label: "Pesquise em vários operadores num só fluxo" },
+  { value: "Widget próprio", label: "Integração do widget no site da sua agência" },
+  { value: "Backoffice", label: "Gestão de clientes e reservas num só lugar" },
 ] as const;
 
 export const PROBLEM = {
-  title: "Menos ferramentas soltas. Mais controlo comercial.",
-  lead: "Consultores perdem tempo a saltar entre sites de operadores, folhas de cálculo e emails. O TravelPlus concentra a pesquisa e a venda num fluxo único, com a sua marca à frente.",
+  title: "Menos ferramentas soltas. Mais controlo para a sua agência.",
+  lead: "Os seus consultores perdem tempo a saltar entre sites de operadores, folhas de cálculo e emails? O TravelPlus concentra a pesquisa e a venda num fluxo único.",
 };
 
 export const FEATURES = [
   {
-    title: "Motor multi-operador",
-    body: "Compare pacotes de vários operadores no mesmo ecrã, com resultados claros para a equipa comercial.",
+    title: "Widget no seu site",
+    body: "Integre a pesquisa no site da agência, com domínio e identidade visual alinhados à sua agência.",
   },
   {
-    title: "Widget no seu site",
-    body: "Integre a pesquisa no site da agência, com domínio e identidade visual alinhados à sua marca.",
+    title: "Motor multi-operador",
+    body: "Compare pacotes de vários operadores numa só pesquisa, com resultados rápidos para a sua equipa e clientes.",
   },
   {
     title: "Orçamentos e reservas",
-    body: "Do primeiro orçamento à confirmação — com área reservada para o cliente e ferramentas para o consultor.",
+    body: "Do primeiro orçamento à confirmação — com área reservada para o cliente e uma única ferramenta para o consultor.",
   },
   {
     title: "Gestão centralizada",
@@ -57,7 +57,7 @@ export const STEPS = [
   {
     step: "01",
     title: "Escolha o plano",
-    body: "Entry, Standard, Premium ou Enterprise — conforme o tamanho da equipa e o nível de branding.",
+    body: "Entry, Standard, Premium ou Enterprise - conforme o tamanho da equipa e o nível de branding.",
   },
   {
     step: "02",
@@ -72,16 +72,16 @@ export const STEPS = [
 ] as const;
 
 export const PRICING_SECTION = {
-  title: "Planos transparentes, em euros",
-  lead: "Subscrição mensal, semestral ou anual. Sem surpresas — e Enterprise quando precisa de escala à medida.",
+  title: "Planos transparentes.",
+  lead: "Subscrição mensal, semestral ou anual. Você escolhe. Sem surpresas.",
 };
 
 export const CTA = {
   title: "Pronto para modernizar a sua agência?",
-  lead: "Escolha um plano ou fale connosco. Respondemos a partir de Portugal, com foco no mercado nacional.",
+  lead: "Escolha o plano ideal para a sua agência e fale connosco.",
 };
 
-export type PlanoPrecos = {
+type PlanoPrecos = {
   mensal: number | null;
   semestral: number | null;
   anual: number | null;
@@ -102,7 +102,7 @@ export const PLANOS: Plano[] = [
   {
     slug: "entry",
     nome: "Entry",
-    descricao: "Para começar — ideal para equipas pequenas.",
+    descricao: "Para começar - ideal para equipas pequenas.",
     requires_sales_contact: false,
     precos: { mensal: 49, semestral: 279, anual: 499 },
     feature_highlights: [
@@ -145,7 +145,7 @@ export const PLANOS: Plano[] = [
   {
     slug: "enterprise",
     nome: "Enterprise",
-    descricao: "À medida — escala e acompanhamento dedicado.",
+    descricao: "À medida - escala e acompanhamento dedicado.",
     requires_sales_contact: true,
     precos: { mensal: null, semestral: null, anual: null },
     feature_highlights: [
