@@ -16,7 +16,7 @@ export function formatPlanoPrice(value: number | null): string {
 
 export const HERO = {
   title: "O software que a sua agência precisa para vender mais viagens",
-  lead: "Motor de pesquisa, orçamentos, reservas e gestão — pensado para agências que querem trabalhar com mais rapidez e menos fricção.",
+  lead: "Motor de pesquisa, orçamentos, reservas e gestão - pensado para agências que querem trabalhar com mais rapidez e menos fricção.",
 };
 
 export const PROOF = [
@@ -44,17 +44,17 @@ export const FEATURES = [
   {
     id: "orcamentos",
     title: "Orçamentos e reservas",
-    body: "Do primeiro orçamento à confirmação — com área reservada para o cliente e uma única ferramenta para o consultor.",
+    body: "Do primeiro orçamento à confirmação - com uma área reservada para os seus clientes e uma única ferramenta para si.",
   },
   {
     id: "gestao",
     title: "Gestão centralizada",
-    body: "Backoffice para equipas, subscrições, sincronizações e o dia-a-dia da operação da agência.",
+    body: "Backoffice para gerir a sua equipa, subscrições, sincronizações e o dia-a-dia da sua agência.",
   },
   {
     id: "cliente",
     title: "Área reservada do cliente",
-    body: "O cliente acompanha propostas e reservas num espaço próprio — com a marca da agência à frente.",
+    body: "O cliente acompanha propostas e reservas num espaço próprio - com a sua agência em destaque.",
   },
 ] as const;
 
@@ -72,7 +72,7 @@ export const STEPS = [
   {
     step: "03",
     title: "Venda no seu fluxo",
-    body: "A equipa pesquisa, orçamenta e reserva sem sair da plataforma — e o cliente acompanha online.",
+    body: "A equipa pesquisa, orçamenta e reserva sem sair da plataforma - e o cliente acompanha tudo online.",
   },
 ] as const;
 
