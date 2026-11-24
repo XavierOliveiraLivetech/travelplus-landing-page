@@ -1,0 +1,38 @@
+/* Covers the "Como funciona" section; the plane flies in its coordinates. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  /* Enter / leave past the side edges without widening the page. */
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Match the on-screen size of the airliner orbiting the features globe. */
+  width: calc(clamp(13rem, 32vh, 19rem) * 0.95);
+  height: calc(clamp(13rem, 32vh, 19rem) * 0.684);
+  margin: 0;
+  opacity: 0;
+  transform-origin: 65% 50%;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.planeCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+@media (max-width: 1023px), (prefers-reduced-motion: reduce) {
+  .layer {
+    display: none;
+  }
+}

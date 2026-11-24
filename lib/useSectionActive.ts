@@ -2,39 +2,14 @@
 
 import { type RefObject, useEffect, useState } from "react";
 
-/** Story layers count as "shown" once their fade is mostly done. */
-const SHOWN_OPACITY = 0.6;
-
-/**
- * Everything the pinned story fades in (panels, CTA/footer layers and the
- * per-item reveals the plane does in features / steps / pricing).
- */
-const STORY_FADE_SELECTOR = [
-  "[data-story-panel]",
-  "[data-story-layer]",
-  "[data-feature-item]",
-  "[data-step-item]",
-  "[data-pricing-item]",
-].join(",");
-
-function storyFadeLayers(el: HTMLElement, bridge: HTMLElement) {
-  const layers: HTMLElement[] = [];
-  let node = el.closest<HTMLElement>(STORY_FADE_SELECTOR);
-  while (node && bridge.contains(node)) {
-    layers.push(node);
-    node = node.parentElement?.closest<HTMLElement>(STORY_FADE_SELECTOR) ?? null;
-  }
-  return layers;
-}
-
 /**
  * True while the element is really on screen for the visitor.
  *
- * On desktop every section lives in the pinned story stage at the same time
- * (stacked, faded in/out by GSAP), so IntersectionObserver alone reports them
- * all as visible from page load and demos run while hidden. There we wait for
- * every story layer around the element to be faded in. Everywhere else
- * (mobile/tablet, reduced motion) it falls back to plain intersection.
+ * Besides plain intersection it waits for the element to be shown:
+ * - inside a scroll reveal (`data-reveal`), until it is no longer pending;
+ * - inside a `data-reveal-gate` (the "Como funciona" cards the plane
+ *   uncovers), until the gate is marked `data-revealed="true"`.
+ * So demos never run while their card is still invisible.
  *
  * Use the false → true flip to restart an animation from its first frame.
  */
@@ -48,21 +23,17 @@ export function useSectionActive(
     const el = ref.current;
     if (!el) return;
 
-    const bridge = el.closest<HTMLElement>("[data-story-bridge]");
-    const layers = bridge ? storyFadeLayers(el, bridge) : [];
+    const reveal = el.closest<HTMLElement>("[data-reveal]");
+    const gate = el.closest<HTMLElement>("[data-reveal-gate]");
 
     let intersecting = false;
     let current = false;
 
     const sync = () => {
-      const pinned = bridge?.dataset.flightActive === "true";
-      // Intersection still rules out copies hidden with display:none.
       const next =
         intersecting &&
-        (!pinned ||
-          layers.every(
-            (layer) => Number(getComputedStyle(layer).opacity) > SHOWN_OPACITY,
-          ));
+        !reveal?.hasAttribute("data-reveal-pending") &&
+        (!gate || gate.dataset.revealed === "true");
       if (next === current) return;
       current = next;
       setActive(next);
@@ -78,14 +49,14 @@ export function useSectionActive(
     io.observe(el);
 
     const mo = new MutationObserver(sync);
-    if (bridge) {
-      mo.observe(bridge, {
+    if (reveal) {
+      mo.observe(reveal, {
         attributes: true,
-        attributeFilter: ["data-flight-active"],
+        attributeFilter: ["data-reveal-pending"],
       });
     }
-    for (const layer of layers) {
-      mo.observe(layer, { attributes: true, attributeFilter: ["style", "class"] });
+    if (gate) {
+      mo.observe(gate, { attributes: true, attributeFilter: ["data-revealed"] });
     }
 
     sync();

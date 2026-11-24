@@ -1,11 +1,11 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { AirlinerModel } from "./AirlinerModel";
-import styles from "./PaperPlaneFlight.module.css";
+import { TravelPlusSymbolModel } from "./TravelPlusSymbolModel";
+import styles from "./StepsPlaneFlight.module.css";
 
 /**
- * Same airliner as the features globe, facing right so the flight
+ * Same TravelPlus symbol as the features globe, facing right so the flight
  * path rotation can point it along the steps.
  */
 export function StoryAirliner() {
@@ -27,8 +27,8 @@ export function StoryAirliner() {
       <ambientLight intensity={1.05} />
       <directionalLight position={[3, 4, 5]} intensity={1.5} />
       <directionalLight position={[-2, -1, -2]} intensity={0.35} />
-      <group rotation={[0.25, -Math.PI / 2, 0]} scale={0.56}>
-        <AirlinerModel />
+      <group rotation={[0.12, -Math.PI / 2, 0]} scale={0.62}>
+        <TravelPlusSymbolModel />
       </group>
     </Canvas>
   );

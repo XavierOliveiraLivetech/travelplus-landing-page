@@ -7,17 +7,10 @@ import { useSectionActive } from "@/lib/useSectionActive";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import dynamic from "next/dynamic";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
-import type { IconType } from "react-icons";
-import {
-  LuAppWindow,
-  LuCircleUserRound,
-  LuLayers,
-  LuLayoutDashboard,
-  LuPause,
-  LuPlay,
-  LuReceiptText,
-} from "react-icons/lu";
+import { useEffect, useRef, useState } from "react";
+import { LuPause, LuPlay } from "react-icons/lu";
+import { type FeatureId, FeatureVisual } from "./FeatureVisuals";
+import { StepSequence } from "./StepVisuals";
 import styles from "./FeaturesDial.module.css";
 import motionStyles from "./MotionToggle.module.css";
 
@@ -28,14 +21,8 @@ const GlobeFlight = dynamic(
 
 gsap.registerPlugin(useGSAP);
 
-const ACCENTS = ["#d87020", "#5b3fd6", "#0f9b8e", "#2b7fd6", "#e0566b"];
-const ICONS: IconType[] = [
-  LuAppWindow,
-  LuLayers,
-  LuReceiptText,
-  LuLayoutDashboard,
-  LuCircleUserRound,
-];
+/* Bento slots: which feature goes where (slot order = visual order). */
+const BENTO: FeatureId[] = ["widget", "operadores", "cliente", "orcamentos", "gestao"];
 
 /* ——— Wireframe globe geometry (viewBox 0 0 400 400) ——— */
 const R = 170;
@@ -88,7 +75,7 @@ export function FeaturesDial() {
   const spinRef = useRef<gsap.core.Tween | null>(null);
   const globeRef = useRef<HTMLDivElement | null>(null);
   // Only spin / render the WebGL globe while it is actually on screen
-  // (scrolled into view on mobile, faded in by the story on desktop).
+  // (scrolled into view).
   const globeOnScreen = useSectionActive(globeRef, 0.1);
   const idle = paused || !globeOnScreen;
 
@@ -135,10 +122,11 @@ export function FeaturesDial() {
       id="produto-features"
       className={styles.section}
       aria-labelledby="features-title"
-      data-story-section="features"
     >
       <div className={`${siteStyles.sectionInner} ${styles.inner}`}>
-        <div className={styles.headRow}>
+        {/* One reveal for title + globe so they fade in together; the globe's
+            spin (useSectionActive) waits for that reveal too. */}
+        <div className={styles.headRow} data-reveal>
           {/* Globe first in the DOM so it can float beside the title on phones */}
           <div ref={globeRef} className={styles.globeWrap}>
             {reduced ? (
@@ -171,7 +159,7 @@ export function FeaturesDial() {
               </button>
             )}
           </div>
-          <header className={styles.header} data-reveal>
+          <header className={styles.header}>
             <h2 id="features-title" className={siteStyles.sectionTitle}>
               Tudo o que a agência precisa num só sítio
             </h2>
@@ -182,32 +170,34 @@ export function FeaturesDial() {
           </header>
         </div>
 
-        {/* Features are parallel capabilities, not a sequence: an unordered grid */}
-        <ul className={styles.grid}>
-          {FEATURES.map((feature, index) => {
-            const Icon = ICONS[index];
-            return (
-              <li
-                key={feature.title}
-                className={styles.card}
-                data-feature-item
-                data-reveal
-                data-featured={index < 2 ? "true" : undefined}
-                style={
-                  { "--accent": ACCENTS[index], "--i": index } as CSSProperties
-                }
-              >
-                <span className={styles.icon} aria-hidden="true">
-                  <Icon />
-                </span>
-                <div className={styles.copy}>
-                  <h3 className={styles.title}>{feature.title}</h3>
-                  <p className={styles.body}>{feature.body}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        {/* Features are parallel capabilities, not a sequence: an unordered
+            bento (desktop rows 3 + 2). Card demos follow the "Como funciona"
+            rules (StepSequence): a card plays once it is almost fully in view
+            and after any earlier card still playing beside it. */}
+        <StepSequence mode="independent">
+          <ul className={styles.grid}>
+            {BENTO.map((id, index) => {
+              const feature = FEATURES.find((f) => f.id === id);
+              if (!feature) return null;
+              return (
+                <li
+                  key={id}
+                  className={styles.card}
+                  data-slot={id}
+                  data-title="top"
+                  data-feature-card
+                  data-reveal
+                >
+                  <div className={styles.copy}>
+                    <h3 className={styles.title}>{feature.title}</h3>
+                    <p className={styles.body}>{feature.body}</p>
+                  </div>
+                  <FeatureVisual id={id} index={index} />
+                </li>
+              );
+            })}
+          </ul>
+        </StepSequence>
       </div>
     </section>
   );

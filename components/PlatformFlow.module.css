@@ -329,7 +329,6 @@
   font-size: 0.75rem;
 }
 
-.pillIncluded,
 .chipSuccess {
   display: inline-flex;
   align-items: center;
@@ -341,18 +340,12 @@
   white-space: nowrap;
 }
 
-/* Same as .chipSoft / .chipSuccess in StepVisuals */
-.pillIncluded {
-  background: var(--orange-soft);
-  color: var(--brand-orange-dark);
-}
-
+/* Same as .chipSuccess in StepVisuals */
 .chipSuccess {
   background: var(--success-soft);
   color: var(--success);
 }
 
-.pillIncluded svg,
 .chipSuccess svg {
   width: 0.75rem;
   height: 0.75rem;
@@ -1240,7 +1233,7 @@
   border-top: 1px solid var(--linha);
 }
 
-/* Optional extras: checkbox the cursor ticks (final state = checked) */
+/* Checkbox the cursor ticks (final state = checked) */
 .extraBox {
   position: relative;
   display: grid;
@@ -1288,22 +1281,6 @@
   }
 }
 
-.extraCheck {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
-  border-radius: 50%;
-  background: var(--orange-soft);
-  color: var(--brand-orange);
-}
-
-.extraCheck svg {
-  width: 0.6rem;
-  height: 0.6rem;
-}
-
 .extraText {
   display: grid;
   flex: 1;
@@ -1317,11 +1294,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.extraRow .pillIncluded {
-  padding: 0.12rem 0.45rem;
-  font-size: 0.625rem;
 }
 
 /* Same look as the active step pill in the app bar */

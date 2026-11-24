@@ -4,6 +4,7 @@ import siteStyles from "@/app/site.module.css";
 import { STEPS } from "@/lib/site-data";
 import { useLayoutEffect } from "react";
 import { StepSequence, StepVisual } from "./StepVisuals";
+import { StepsPlaneFlight } from "./StepsPlaneFlight";
 import styles from "./StepsJourney.module.css";
 
 function syncStepCardHeights(root: ParentNode) {
@@ -22,6 +23,36 @@ function syncStepCardHeights(root: ParentNode) {
   cards.forEach((card) => {
     card.style.minHeight = `${max}px`;
   });
+}
+
+type Step = (typeof STEPS)[number];
+
+/** Section title + lead (each layout renders its own copy). */
+function StepsIntro({ titleId }: { titleId: string }) {
+  return (
+    <>
+      <h2 id={titleId} className={siteStyles.sectionTitle}>
+        Como funciona
+      </h2>
+      <p className={siteStyles.sectionLead}>
+        Três passos simples para ter a plataforma a trabalhar pela sua equipa.
+      </p>
+    </>
+  );
+}
+
+/** Number, title, copy and demo card of one step. */
+function StepContent({ item, index }: { item: Step; index: number }) {
+  return (
+    <>
+      <h3 className={styles.stepHeading}>
+        <span className={styles.stepNumber}>{item.step}</span>
+        <span className={styles.stepTitleText}>{item.title}</span>
+      </h3>
+      <p className={styles.stepBody}>{item.body}</p>
+      <StepVisual index={index} />
+    </>
+  );
 }
 
 export function StepsJourney() {
@@ -53,19 +84,16 @@ export function StepsJourney() {
       id="como-funciona"
       className={styles.scrollRoot}
       aria-labelledby="como-funciona-title"
-      data-story-section="skills"
     >
       <div className={styles.panel}>
-        {/* Desktop layout — always mounted so scrollytelling can target steps */}
-        <div className={styles.desktopBlock}>
-          <div className={`${siteStyles.sectionInner} ${styles.header}`}>
-            <h2 id="como-funciona-title" className={siteStyles.sectionTitle}>
-              Como funciona
-            </h2>
-            <p className={siteStyles.sectionLead}>
-              Três passos simples para ter a plataforma a trabalhar pela sua
-              equipa.
-            </p>
+        {/* Desktop layout: the plane reveals the cards once this whole
+            block is on screen (StepsPlaneFlight). */}
+        <div className={styles.desktopBlock} data-steps-flight-area>
+          <div
+            className={`${siteStyles.sectionInner} ${styles.header}`}
+            data-reveal
+          >
+            <StepsIntro titleId="como-funciona-title" />
           </div>
 
           <div className={styles.stage} data-steps-stage>
@@ -76,14 +104,9 @@ export function StepsJourney() {
                     key={item.step}
                     className={styles.step}
                     data-step-item
-                    data-flight-index={index}
+                    data-reveal-gate
                   >
-                    <h3 className={styles.stepHeading}>
-                      <span className={styles.stepNumber}>{item.step}</span>
-                      <span className={styles.stepTitleText}>{item.title}</span>
-                    </h3>
-                    <p className={styles.stepBody}>{item.body}</p>
-                    <StepVisual index={index} />
+                    <StepContent item={item} index={index} />
                   </li>
                 ))}
               </ol>
@@ -94,37 +117,19 @@ export function StepsJourney() {
         {/* Mobile layout */}
         <div className={`${siteStyles.sectionInner} ${styles.staticBlock}`}>
           <div className={styles.header} data-reveal>
-            <h2
-              id="como-funciona-title-mobile"
-              className={siteStyles.sectionTitle}
-            >
-              Como funciona
-            </h2>
-            <p className={siteStyles.sectionLead}>
-              Três passos simples para ter a plataforma a trabalhar pela sua
-              equipa.
-            </p>
+            <StepsIntro titleId="como-funciona-title-mobile" />
           </div>
 
           {/* Stacked list taller than the screen: each card plays on its own */}
           <StepSequence mode="independent">
             <ol className={styles.mobileList}>
               {STEPS.map((item, index) => (
-                <li
-                  key={item.step}
-                  data-reveal
-                  className={styles.mobileItem}
-                >
+                <li key={item.step} data-reveal className={styles.mobileItem}>
                   <div className={styles.mobileRail}>
                     <span className={styles.mobileDot} />
                   </div>
                   <div className={styles.mobileCopy}>
-                    <h3 className={styles.stepHeading}>
-                      <span className={styles.stepNumber}>{item.step}</span>
-                      <span className={styles.stepTitleText}>{item.title}</span>
-                    </h3>
-                    <p className={styles.stepBody}>{item.body}</p>
-                    <StepVisual index={index} />
+                    <StepContent item={item} index={index} />
                   </div>
                 </li>
               ))}
@@ -132,6 +137,8 @@ export function StepsJourney() {
           </StepSequence>
         </div>
       </div>
+
+      <StepsPlaneFlight />
     </section>
   );
 }

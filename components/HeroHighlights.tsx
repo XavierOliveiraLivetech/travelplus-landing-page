@@ -2,6 +2,7 @@
 
 import { type PointerEvent, useRef, useState } from "react";
 import { PROOF } from "@/lib/site-data";
+import type { CssVars } from "@/lib/cssVars";
 import styles from "./HeroHighlights.module.css";
 
 /**
@@ -88,7 +89,6 @@ export function HeroHighlights() {
       role="group"
       aria-roledescription="carrossel"
       aria-label="Destaques"
-      data-story-layer="hero-copy"
     >
       {/* Announces the new item after a click / drag (user-initiated, so polite is fine) */}
       <div
@@ -106,7 +106,7 @@ export function HeroHighlights() {
             {
               "--index": active,
               "--drag": `${dragX ?? 0}px`,
-            } as React.CSSProperties
+            } as CssVars
           }
         >
           {PROOF.map((item, i) => (

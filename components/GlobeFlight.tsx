@@ -3,17 +3,17 @@
 import { useGSAP } from "@gsap/react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import gsap from "gsap";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Group } from "three";
-import { AirlinerModel } from "./AirlinerModel";
+import { TravelPlusSymbolModel } from "./TravelPlusSymbolModel";
 import styles from "./FeaturesDial.module.css";
 
 gsap.registerPlugin(useGSAP);
 
 /**
- * GSAP has no 3D mesh library, and React has no built-in airplane.
- * The same airliner mesh orbits this globe and flies the steps section.
- * A depth-only sphere matches the SVG globe so the plane slips behind it.
+ * The TravelPlus symbol orbits the SVG globe (the same symbol flies the
+ * steps section). A depth-only sphere matches the SVG globe so the symbol
+ * slips behind it.
  */
 const ORBIT = 1.52;
 const TILT = 0.38;
@@ -50,7 +50,6 @@ function OrbitingPlane({
       tweenRef.current = null;
     };
     // `paused` is applied below without restarting the lap.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reduced]);
 
   useLayoutEffect(() => {
@@ -81,8 +80,8 @@ function OrbitingPlane({
 
   return (
     <group ref={rig}>
-      <group scale={0.44}>
-        <AirlinerModel />
+      <group scale={0.5}>
+        <TravelPlusSymbolModel />
       </group>
     </group>
   );
@@ -107,6 +106,10 @@ export function GlobeFlight({
   paused: boolean;
 }) {
   const still = reduced || paused;
+  // three.js loads after the section's own reveal: fade the canvas in once
+  // its first frame is drawn, like the rest of the head row, instead of
+  // letting the symbol pop in.
+  const [drawn, setDrawn] = useState(false);
 
   return (
     <Canvas
@@ -121,11 +124,14 @@ export function GlobeFlight({
         pointerEvents: "none",
         overflow: "visible",
         zIndex: 1,
+        opacity: drawn ? 1 : 0,
+        transition: reduced ? "none" : "opacity 1.1s var(--ease-reveal)",
       }}
       dpr={[1, 1.75]}
       gl={{ alpha: true, antialias: true, premultipliedAlpha: true }}
       onCreated={({ gl }) => {
         gl.setClearColor(0x000000, 0);
+        requestAnimationFrame(() => requestAnimationFrame(() => setDrawn(true)));
       }}
       camera={{ position: [0, 0.12, CAMERA_Z], fov: CAMERA_FOV }}
       // Nothing moves: only re-render when something changes (e.g. resize).

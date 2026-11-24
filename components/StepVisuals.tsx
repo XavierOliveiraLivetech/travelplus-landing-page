@@ -23,6 +23,7 @@ import { REDUCED_MOTION_QUERY } from "@/lib/motionQueries";
 import { useSectionActive } from "@/lib/useSectionActive";
 import styles from "./StepVisuals.module.css";
 import { assetPath } from "@/lib/assetPath";
+import { cx } from "@/lib/cx";
 
 const LOGO_SRC = assetPath("/brand/logo-mark.png");
 const AGENCY_DOMAIN = "dominio-personalizado.pt";
@@ -144,7 +145,7 @@ export function StepSequence({
  * is also on screen is still playing. Reports itself done after `demoMs`.
  * Dropping out of view resets it, so it replays (in turn) on return.
  */
-function useStepTurn(
+export function useStepTurn(
   ref: RefObject<HTMLElement | null>,
   index: number,
   demoMs: number,
@@ -171,6 +172,7 @@ function useStepTurn(
   const synced = seq ? Boolean(seq.states[index]?.active) === active : true;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- latches the demo once its turn has really started
     if (!active) setStarted(false);
     else if (running && synced) setStarted(true);
   }, [active, running, synced]);
@@ -215,9 +217,7 @@ function PlanCard({ index }: { index: number }) {
   return (
     <div
       ref={cardRef}
-      className={[styles.card, styles.planCard, running ? styles.planCardRunning : ""]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx(styles.card, styles.planCard, running && styles.planCardRunning)}
       data-step-card
     >
       <div className={styles.cardHead}>
@@ -233,12 +233,10 @@ function PlanCard({ index }: { index: number }) {
           <div key={plan.name} className={styles.planRow}>
             <span className={styles.planName}>{plan.name}</span>
             <span
-              className={[
+              className={cx(
                 styles.planMeta,
-                "popular" in plan && plan.popular ? styles.planMetaPopular : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+                "popular" in plan && plan.popular && styles.planMetaPopular,
+              )}
             >
               {plan.meta}
             </span>
@@ -313,6 +311,7 @@ function AgencyCard({ index }: { index: number }) {
     if (!cursor) return;
 
     if (window.matchMedia(REDUCED_MOTION_QUERY).matches) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reduced motion is only known in the browser
       setTyped(AGENCY_DOMAIN.length);
       return;
     }
@@ -345,13 +344,11 @@ function AgencyCard({ index }: { index: number }) {
     <div
       ref={cardRef}
       data-step-card
-      className={[
+      className={cx(
         styles.card,
         styles.agencyCard,
-        running ? styles.agencyCardRunning : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+        running && styles.agencyCardRunning,
+      )}
     >
       <div className={styles.browserBar}>
         <span className={styles.dots}>
@@ -438,9 +435,7 @@ function BookingCard({ index }: { index: number }) {
   return (
     <div
       ref={cardRef}
-      className={[styles.card, running ? styles.bookingCardRunning : ""]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx(styles.card, running && styles.bookingCardRunning)}
       data-step-card
     >
       <div className={styles.cardHead}>

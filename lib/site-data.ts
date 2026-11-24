@@ -32,22 +32,27 @@ export const PROBLEM = {
 
 export const FEATURES = [
   {
+    id: "widget",
     title: "Widget no seu site",
     body: "Integre a pesquisa no site da agência, com domínio e identidade visual alinhados à sua agência.",
   },
   {
+    id: "operadores",
     title: "Motor multi-operador",
     body: "Compare pacotes de vários operadores numa só pesquisa, com resultados rápidos para a sua equipa e clientes.",
   },
   {
+    id: "orcamentos",
     title: "Orçamentos e reservas",
     body: "Do primeiro orçamento à confirmação — com área reservada para o cliente e uma única ferramenta para o consultor.",
   },
   {
+    id: "gestao",
     title: "Gestão centralizada",
     body: "Backoffice para equipas, subscrições, sincronizações e o dia-a-dia da operação da agência.",
   },
   {
+    id: "cliente",
     title: "Área reservada do cliente",
     body: "O cliente acompanha propostas e reservas num espaço próprio — com a marca da agência à frente.",
   },

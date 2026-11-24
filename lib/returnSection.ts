@@ -15,25 +15,8 @@ const SECTION_IDS = [
   "contacto",
 ] as const;
 
-/** Story panel (desktop scrollytelling) → section id. */
-const PANEL_TO_ID: Record<string, (typeof SECTION_IDS)[number]> = {
-  hero: "inicio",
-  problems: "produto",
-  features: "produto-features",
-  skills: "como-funciona",
-  pricing: "planos",
-  closing: "contacto",
-};
-
 function currentSectionId(): string | null {
-  // Desktop: the pinned story knows which panel is on screen.
-  const bridge = document.querySelector<HTMLElement>(
-    "[data-story-bridge][data-flight-active]",
-  );
-  const panel = bridge?.dataset.activePanel;
-  if (panel && PANEL_TO_ID[panel]) return PANEL_TO_ID[panel];
-
-  // Mobile / reduced motion: last section whose top is above mid-viewport.
+  // Last section whose top is above mid-viewport.
   const probe = window.innerHeight * 0.5;
   let found: string | null = null;
   for (const id of SECTION_IDS) {

@@ -6,6 +6,8 @@ import { useEffect, useId, useState } from "react";
 import { FaArrowRight } from "react-icons/fa6";
 import styles from "@/app/site.module.css";
 import { assetPath } from "@/lib/assetPath";
+import type { CssVars } from "@/lib/cssVars";
+import { cx } from "@/lib/cx";
 
 const NAV_LINKS = [
   { href: "#produto", label: "Produto", hint: "Conheça a nossa plataforma" },
@@ -38,20 +40,12 @@ export function SiteHeader() {
   useEffect(() => {
     const title = document.getElementById("hero-title");
     if (!title) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no hero on the page: header is solid from the start
       setOverHero(false);
       return;
     }
 
     const syncFromTitle = () => {
-      const bridge = document.querySelector<HTMLElement>("[data-story-bridge]");
-      // Pinned hero stays in the viewport at opacity 0 — follow its dark
-      // background, so the nav flips as soon as the page turns light.
-      const heroDark = bridge?.dataset.heroDark;
-      if (bridge?.dataset.flightActive === "true" && heroDark) {
-        setOverHero(heroDark === "true");
-        return;
-      }
-
       const top = title.getBoundingClientRect().top;
       // Transparent only while the title is still fully below the nav
       setOverHero(top > HEADER_SOLID_OFFSET_PX);
@@ -62,37 +56,15 @@ export function SiteHeader() {
       threshold: [0, 0.01, 0.1, 0.25, 0.5, 1],
     });
 
-    const onArrive = (event: Event) => {
-      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
-      if (!id) return;
-      if (id === "inicio" || id === "hero") {
-        syncFromTitle();
-        return;
-      }
-      setOverHero(false);
-    };
-
-    const panelObserver = new MutationObserver(syncFromTitle);
-
     syncFromTitle();
     observer.observe(title);
-    const bridge = document.querySelector("[data-story-bridge]");
-    if (bridge) {
-      panelObserver.observe(bridge, {
-        attributes: true,
-        attributeFilter: ["data-hero-dark", "data-flight-active"],
-      });
-    }
     window.addEventListener("scroll", syncFromTitle, { passive: true });
     window.addEventListener("resize", syncFromTitle);
-    window.addEventListener("tp-section-arrive", onArrive);
 
     return () => {
       observer.disconnect();
-      panelObserver.disconnect();
       window.removeEventListener("scroll", syncFromTitle);
       window.removeEventListener("resize", syncFromTitle);
-      window.removeEventListener("tp-section-arrive", onArrive);
     };
   }, []);
 
@@ -104,6 +76,7 @@ export function SiteHeader() {
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- active row is read from the page layout when the menu opens
     setActiveHref(findActiveHref());
 
     return () => {
@@ -122,9 +95,8 @@ export function SiteHeader() {
   return (
     <>
       <header
-        className={[styles.header, solid ? styles.headerSolid : styles.headerOnHero]
-          .filter(Boolean)
-          .join(" ")}
+        data-site-header
+        className={cx(styles.header, solid ? styles.headerSolid : styles.headerOnHero)}
       >
         <div className={styles.headerInner}>
           <Link href="/" className={styles.logoLink} aria-label="TravelPlus">
@@ -152,9 +124,7 @@ export function SiteHeader() {
 
           <button
             type="button"
-            className={[styles.fabToggle, menuOpen ? styles.fabToggleOpen : ""]
-              .filter(Boolean)
-              .join(" ")}
+            className={cx(styles.fabToggle, menuOpen && styles.fabToggleOpen)}
             aria-expanded={menuOpen}
             aria-controls={menuId}
             aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
@@ -169,9 +139,7 @@ export function SiteHeader() {
       </header>
 
       <div
-        className={[styles.fabRoot, menuOpen ? styles.fabRootOpen : ""]
-          .filter(Boolean)
-          .join(" ")}
+        className={cx(styles.fabRoot, menuOpen && styles.fabRootOpen)}
       >
         <button
           type="button"
@@ -195,13 +163,11 @@ export function SiteHeader() {
                 <li
                   key={link.href}
                   className={styles.mnavItem}
-                  style={{ "--mnav-i": String(index) } as React.CSSProperties}
+                  style={{ "--mnav-i": String(index) } as CssVars}
                 >
                   <a
                     href={link.href}
-                    className={[styles.mnavLink, isActive ? styles.mnavLinkActive : ""]
-                      .filter(Boolean)
-                      .join(" ")}
+                    className={cx(styles.mnavLink, isActive && styles.mnavLinkActive)}
                     aria-current={isActive ? "location" : undefined}
                     tabIndex={menuOpen ? 0 : -1}
                     onClick={closeMenu}
@@ -221,7 +187,7 @@ export function SiteHeader() {
 
           <div
             className={[styles.mnavItem, styles.mnavCta].join(" ")}
-            style={{ "--mnav-i": String(NAV_LINKS.length) } as React.CSSProperties}
+            style={{ "--mnav-i": String(NAV_LINKS.length) } as CssVars}
           >
             <Link
               href="/aderir"

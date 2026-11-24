@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
   LuCalendarDays,
@@ -20,6 +20,8 @@ import { useSectionActive } from "@/lib/useSectionActive";
 import { MotionToggle } from "./MotionToggle";
 import styles from "./PlatformFlow.module.css";
 import { assetPath } from "@/lib/assetPath";
+import type { CssVars } from "@/lib/cssVars";
+import { cx } from "@/lib/cx";
 
 const LOGO_SRC = assetPath("/brand/logo-mark.png");
 
@@ -37,15 +39,15 @@ const SCENES = [
   { key: "payment", label: "Pagamento", icon: LuCreditCard, ms: 5600 },
 ] as const;
 
-/** Logos live in /public/operators — drop the files there with these names. */
+/** Logos live in /public/operators/<id>.png. */
 const OPERATORS = [
-  { id: "newblue", name: "Newblue", logo: assetPath("/operators/newblue.png") },
-  { id: "solferias", name: "Solférias", logo: assetPath("/operators/solferias.png") },
-  { id: "soltropico", name: "Soltrópico", logo: assetPath("/operators/soltropico.png") },
-  { id: "viajartours", name: "Viajar Tours", logo: assetPath("/operators/viajartours.png") },
-  { id: "soltour", name: "Soltour", logo: assetPath("/operators/soltour.png") },
-  { id: "travelplan", name: "Travelplan", logo: assetPath("/operators/travelplan.png") },
-  { id: "tui", name: "TUI", logo: assetPath("/operators/tui.png") },
+  { id: "newblue", name: "Newblue" },
+  { id: "solferias", name: "Solférias" },
+  { id: "soltropico", name: "Soltrópico" },
+  { id: "viajartours", name: "Viajar Tours" },
+  { id: "soltour", name: "Soltour" },
+  { id: "travelplan", name: "Travelplan" },
+  { id: "tui", name: "TUI" },
 ] as const;
 
 type OperatorId = (typeof OPERATORS)[number]["id"];
@@ -84,18 +86,14 @@ const INSURANCE_PICK = 1;
 const BASE_TOTAL = "2042€";
 
 /**
- * Extras: one comes with the package, the others the cursor ticks one by one.
- * `check` = when the box turns on. A single cursor ticks them in turn
- * (see EXTRAS_CURSOR and `.cursorChain` — timings must stay in sync).
+ * Optional extras the cursor ticks one by one. `check` = when the box turns
+ * on. A single cursor ticks them in turn (see EXTRAS_CURSOR and
+ * `.cursorChain` — timings must stay in sync).
  */
-const EXTRAS: {
-  name: string;
-  price?: string;
-  check?: number;
-}[] = [
+const EXTRAS = [
   { name: "Transfer privado", price: "+60€", check: 4050 },
   { name: "Mala 23 kg", price: "+50€", check: 5400 },
-];
+] as const;
 
 /** The one cursor that ticks both optional extras without leaving. */
 const EXTRAS_CURSOR = { at: 3150, from: "9rem, -6rem" };
@@ -125,13 +123,7 @@ const PASSENGER_FIELDS = [
 /** Gap between one field finishing and the next one starting. */
 const FIELD_GAP = 140;
 
-const PAY_METHODS = [
-  { name: "MB WAY" },
-  { name: "Multibanco" },
-  { name: "Cartão" },
-] as const;
-
-type Vars = CSSProperties & Record<`--${string}`, string | number>;
+const PAY_METHODS = ["MB WAY", "Multibanco", "Cartão"] as const;
 
 /**
  * Per-keystroke delays (ms) for a string, with a little human rhythm:
@@ -157,7 +149,7 @@ function typingMs(text: string) {
 }
 
 /** Timing vars for the field that wraps a <Typed>, so it looks focused while typing. */
-function focusVars(text: string, at: number): Vars {
+function focusVars(text: string, at: number): CssVars {
   // Ends right as the next field starts (FIELD_GAP later), so only one looks focused.
   return {
     "--focus-at": `${at - 120}ms`,
@@ -178,15 +170,17 @@ function OperatorLogo({ id, className }: { id: OperatorId; className?: string })
   }, []);
 
   return (
-    <span
-      className={[styles.opLogo, className].filter(Boolean).join(" ")}
-      data-op={id}
-    >
+    <span className={cx(styles.opLogo, className)} data-op={id}>
       {failed ? (
         <span className={styles.opLogoText}>{op.name}</span>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
-        <img ref={imgRef} src={op.logo} alt="" onError={() => setFailed(true)} />
+        <img
+          ref={imgRef}
+          src={assetPath(`/operators/${id}.png`)}
+          alt=""
+          onError={() => setFailed(true)}
+        />
       )}
     </span>
   );
@@ -205,8 +199,8 @@ function Cursor({
 }) {
   return (
     <span
-      className={[styles.cursor, chain ? styles.cursorChain : ""].filter(Boolean).join(" ")}
-      style={{ "--at": `${at}ms`, "--from": from } as Vars}
+      className={cx(styles.cursor, chain && styles.cursorChain)}
+      style={{ "--at": `${at}ms`, "--from": from } as CssVars}
     />
   );
 }
@@ -219,18 +213,16 @@ function Cursor({
 function Typed({ text, at }: { text: string; at: number }) {
   const { chars, delays, total } = keystrokes(text);
   return (
-    <span className={styles.typed} style={{ "--at": `${at}ms` } as Vars}>
+    <span className={styles.typed} style={{ "--at": `${at}ms` } as CssVars}>
       {chars.map((ch, i) => (
         <span
           key={i}
-          className={[styles.char, i === chars.length - 1 ? styles.charLast : ""]
-            .filter(Boolean)
-            .join(" ")}
+          className={cx(styles.char, i === chars.length - 1 && styles.charLast)}
           style={
             {
               "--d": `${delays[i]}ms`,
               "--n": `${(delays[i + 1] ?? total) - delays[i]}ms`,
-            } as Vars
+            } as CssVars
           }
         >
           {ch}
@@ -249,7 +241,7 @@ function Field({
   label: string;
   children: ReactNode;
   icon?: ReactNode;
-  style?: Vars;
+  style?: CssVars;
 }) {
   return (
     <span className={styles.field} style={style}>
@@ -302,7 +294,7 @@ function SearchScene() {
             <span
               key={op.id}
               className={styles.opChip}
-              style={{ "--at": `${250 + i * 110}ms` } as Vars}
+              style={{ "--at": `${250 + i * 110}ms` } as CssVars}
             >
               <OperatorLogo id={op.id} />
             </span>
@@ -312,13 +304,13 @@ function SearchScene() {
       <div className={styles.searchFoot}>
         <span
           className={styles.searching}
-          style={{ "--at": `${SEARCH_PRESS + 150}ms` } as Vars}
+          style={{ "--at": `${SEARCH_PRESS + 150}ms` } as CssVars}
         >
           <i />A pesquisar em {OPERATORS.length} operadores
         </span>
         <span
           className={`${styles.btnPrimary} ${styles.pressable}`}
-          style={{ "--press": `${SEARCH_PRESS}ms` } as Vars}
+          style={{ "--press": `${SEARCH_PRESS}ms` } as CssVars}
         >
           Pesquisar
           <Cursor at={SEARCH_CURSOR} from="3.5rem, 3rem" />
@@ -360,7 +352,7 @@ function ResultsScene() {
             <div
               key={r.op}
               className={`${styles.resultRow} ${i === 0 ? styles.resultPick : ""}`}
-              style={{ "--at": `${900 + i * 110}ms` } as Vars}
+              style={{ "--at": `${900 + i * 110}ms` } as CssVars}
             >
               <span className={styles.resultText}>
                 <b>{r.title}</b>
@@ -371,7 +363,7 @@ function ResultsScene() {
               </span>
               <span
                 className={`${styles.btnSoft} ${i === 0 ? styles.pressable : ""}`}
-                style={i === 0 ? ({ "--press": "5050ms" } as Vars) : undefined}
+                style={i === 0 ? ({ "--press": "5050ms" } as CssVars) : undefined}
               >
                 Reservar
                 {i === 0 ? <Cursor at={4150} from="-4rem, 4.5rem" /> : null}
@@ -405,8 +397,6 @@ function ExtrasScene() {
     return () => ro.disconnect();
   }, []);
 
-  let optionalIndex = 0;
-
   return (
     <>
       <div className={styles.bookingHead}>
@@ -417,18 +407,16 @@ function ExtrasScene() {
           {TOTAL_STEPS.map((step, i) => (
             <span
               key={step.value}
-              className={[
+              className={cx(
                 styles.totalStep,
-                i === 0 ? styles.totalFirst : "",
-                i === TOTAL_STEPS.length - 1 ? styles.totalLast : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+                i === 0 && styles.totalFirst,
+                i === TOTAL_STEPS.length - 1 && styles.totalLast,
+              )}
               style={
                 {
                   "--in": `${step.at}ms`,
                   "--out": `${TOTAL_STEPS[i + 1]?.at ?? 0}ms`,
-                } as Vars
+                } as CssVars
               }
             >
               {step.value}
@@ -450,25 +438,21 @@ function ExtrasScene() {
           {INSURANCES.map((ins, i) => (
             <span
               key={ins.name}
-              className={[
+              className={cx(
                 styles.insurance,
-                i === INSURANCE_PICK ? styles.insurancePick : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              style={{ "--at": `${300 + i * 120}ms` } as Vars}
+                i === INSURANCE_PICK && styles.insurancePick,
+              )}
+              style={{ "--at": `${300 + i * 120}ms` } as CssVars}
             >
               <b>{ins.name}</b>
               <span className={styles.insurancePrice}>{ins.price}</span>
               <span
-                className={[
+                className={cx(
                   styles.insuranceBtn,
-                  i === INSURANCE_PICK ? styles.pressable : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+                  i === INSURANCE_PICK && styles.pressable,
+                )}
                 style={
-                  i === INSURANCE_PICK ? ({ "--press": "2150ms" } as Vars) : undefined
+                  i === INSURANCE_PICK ? ({ "--press": "2150ms" } as CssVars) : undefined
                 }
               >
                 <span className={styles.btnIdle}>Escolher</span>
@@ -497,55 +481,36 @@ function ExtrasScene() {
           </span>
         </span>
         <ul ref={listRef} className={styles.extrasList}>
-          {EXTRAS.map((ex, i) => {
-            const firstOptional = Boolean(ex.price) && optionalIndex++ === 0;
-            return (
+          {EXTRAS.map((ex, i) => (
             <li
               key={ex.name}
-              className={[styles.extraRow, firstOptional ? styles.extraRowLead : ""]
-                .filter(Boolean)
-                .join(" ")}
+              className={cx(styles.extraRow, i === 0 && styles.extraRowLead)}
               style={
                 {
                   "--at": `${650 + i * 120}ms`,
-                  "--check": `${ex.check ?? 0}ms`,
-                } as Vars
+                  "--check": `${ex.check}ms`,
+                } as CssVars
               }
             >
-              {ex.price ? (
-                <span className={styles.extraBox}>
-                  <LuCheck aria-hidden />
-                  {firstOptional ? (
-                    <Cursor
-                      at={EXTRAS_CURSOR.at}
-                      from={EXTRAS_CURSOR.from}
-                      chain
-                    />
-                  ) : null}
-                </span>
-              ) : (
-                <span className={styles.extraCheck}>
-                  <LuCheck aria-hidden />
-                </span>
-              )}
+              <span className={styles.extraBox}>
+                <LuCheck aria-hidden />
+                {i === 0 ? (
+                  <Cursor at={EXTRAS_CURSOR.at} from={EXTRAS_CURSOR.from} chain />
+                ) : null}
+              </span>
               <span className={styles.extraText}>
                 <b>{ex.name}</b>
               </span>
-              {ex.price ? (
-                <span className={styles.extraPrice}>{ex.price}</span>
-              ) : (
-                <span className={styles.pillIncluded}>Incluído</span>
-              )}
+              <span className={styles.extraPrice}>{ex.price}</span>
             </li>
-            );
-          })}
+          ))}
         </ul>
       </div>
 
       <div className={styles.sceneFoot}>
         <span
           className={`${styles.btnPrimary} ${styles.pressable}`}
-          style={{ "--press": "6700ms" } as Vars}
+          style={{ "--press": "6700ms" } as CssVars}
         >
           Continuar
           <Cursor at={5850} from="-4rem, -3rem" />
@@ -599,7 +564,7 @@ function PassengersScene() {
       <div className={styles.sceneFoot}>
         <span
           className={`${styles.btnPrimary} ${styles.pressable}`}
-          style={{ "--press": "4100ms" } as Vars}
+          style={{ "--press": "4100ms" } as CssVars}
         >
           Continuar
           <Cursor at={3300} from="-3rem, 2.5rem" />
@@ -612,7 +577,7 @@ function PassengersScene() {
 function PaymentScene() {
   return (
     <>
-      <div className={styles.paySummary} style={{ "--at": "80ms" } as Vars}>
+      <div className={styles.paySummary} style={{ "--at": "80ms" } as CssVars}>
         <span className={styles.paySummaryHead}>
           <span className={styles.paySummaryTrip}>
             <b>{RESULTS[0].title} · Ilha do Sal</b>
@@ -635,16 +600,16 @@ function PaymentScene() {
 
       <p className={styles.sceneLabel}>Pagamento</p>
       <div className={styles.methods}>
-        {PAY_METHODS.map((m, i) => (
+        {PAY_METHODS.map((name, i) => (
           <span
-            key={m.name}
+            key={name}
             className={`${styles.method} ${i === 0 ? styles.methodPick : ""}`}
-            style={{ "--at": `${100 + i * 140}ms` } as Vars}
+            style={{ "--at": `${100 + i * 140}ms` } as CssVars}
           >
             <span className={styles.radio}>
               {i === 0 ? <Cursor at={500} from="4rem, 3.5rem" /> : null}
             </span>
-            {m.name}
+            {name}
           </span>
         ))}
       </div>
@@ -656,7 +621,7 @@ function PaymentScene() {
         </span>
         <span
           className={`${styles.btnPrimary} ${styles.pressable}`}
-          style={{ "--press": "2700ms" } as Vars}
+          style={{ "--press": "2700ms" } as CssVars}
         >
           Confirmar
           <Cursor at={1800} from="-6rem, -3.5rem" />
@@ -691,6 +656,7 @@ export function PlatformFlow() {
   // (unless the visitor paused it: then it waits exactly where it stopped).
   const inView = useSectionActive(rootRef);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the demo when the section comes into view
     if (!paused) setScene(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inView]);
@@ -710,13 +676,7 @@ export function PlatformFlow() {
     <div className={styles.visual}>
       <div
         ref={rootRef}
-        className={[
-          styles.card,
-          running ? styles.running : "",
-          paused ? styles.paused : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        className={cx(styles.card, running && styles.running, paused && styles.paused)}
         aria-hidden="true"
       >
         <div className={styles.appBar}>
@@ -739,13 +699,11 @@ export function PlatformFlow() {
               return (
                 <li
                   key={s.key}
-                  className={[
+                  className={cx(
                     styles.step,
-                    i === active ? styles.stepActive : "",
-                    i < active ? styles.stepDone : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
+                    i === active && styles.stepActive,
+                    i < active && styles.stepDone,
+                  )}
                 >
                   <span className={styles.stepIcon}>
                     {i < active ? <LuCheck /> : <Icon />}
@@ -760,18 +718,16 @@ export function PlatformFlow() {
         {/* One segment per step, coloured once the flow reaches it */}
         <div
           className={styles.progress}
-          style={{ "--steps": SCENES.length } as Vars}
+          style={{ "--steps": SCENES.length } as CssVars}
         >
           {SCENES.map((s, i) => (
             <span
               key={s.key}
-              className={[
+              className={cx(
                 styles.progressSeg,
-                i < active ? styles.progressDone : "",
-                i === active ? styles.progressActive : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+                i < active && styles.progressDone,
+                i === active && styles.progressActive,
+              )}
             >
               <i />
             </span>
@@ -782,9 +738,7 @@ export function PlatformFlow() {
           {SCENE_VIEWS.map((View, i) => (
             <div
               key={SCENES[i].key}
-              className={[styles.scene, i === active ? styles.sceneActive : ""]
-                .filter(Boolean)
-                .join(" ")}
+              className={cx(styles.scene, i === active && styles.sceneActive)}
             >
               <View />
             </div>

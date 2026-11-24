@@ -2,6 +2,7 @@
 
 import { LuPause, LuPlay } from "react-icons/lu";
 import styles from "./MotionToggle.module.css";
+import { cx } from "@/lib/cx";
 
 /**
  * Small, quiet pause / play button for looping decorative animations
@@ -43,17 +44,14 @@ export function MotionToggle({
   return (
     <button
       type="button"
-      className={[
+      className={cx(
         styles.button,
         styles.badge,
-        tone === "dark" ? styles.onDark : "",
+        tone === "dark" && styles.onDark,
         className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      )}
       // The name already says the action when it changes per state.
       aria-pressed={titles ? undefined : paused}
-      data-paused={paused}
       aria-label={name}
       title={tooltip}
       onClick={onToggle}

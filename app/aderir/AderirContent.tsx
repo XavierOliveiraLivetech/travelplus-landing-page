@@ -29,6 +29,20 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+/** Trimmed text value of a form field ("" when missing). */
+function readText(data: FormData, name: string) {
+  return String(data.get(name) ?? "").trim();
+}
+
+function RequiredHint() {
+  return (
+    <p className={styles.formHint}>
+      Os campos marcados com <span className={styles.required}>*</span> são
+      obrigatórios.
+    </p>
+  );
+}
+
 /**
  * One labelled form input. `error` is the current validation message (null
  * when valid); fields that are never validated pass `validated={false}` so
@@ -99,6 +113,7 @@ export function AderirContent({ planos }: AderirContentProps) {
   // Preselect the plan from ?plano= (e.g. /aderir?plano=enterprise).
   useEffect(() => {
     const plano = new URLSearchParams(window.location.search).get("plano")?.trim();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- ?plano= only exists in the browser (static export)
     if (plano && planos.some((p) => p.slug === plano)) setSelectedSlug(plano);
   }, [planos]);
   const [duracao, setDuracao] = useState<DuracaoSubscricao>("mensal");
@@ -108,6 +123,7 @@ export function AderirContent({ planos }: AderirContentProps) {
   // "Voltar ao site" returns to the section the visitor came from.
   const [backHref, setBackHref] = useState("/");
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage is only readable after hydration
     setBackHref(returnHref());
   }, []);
 
@@ -130,14 +146,14 @@ export function AderirContent({ planos }: AderirContentProps) {
     const data = new FormData(form);
     const next: FieldError[] = [];
 
-    const agencyName = String(data.get("agency_name") ?? "").trim();
+    const agencyName = readText(data, "agency_name");
     if (!agencyName) {
       next.push({ id: "agency_name", message: "Indique o nome da agência." });
     }
 
     if (isEnterprise) {
-      const contactName = String(data.get("contact_name") ?? "").trim();
-      const contactEmail = String(data.get("contact_email") ?? "").trim();
+      const contactName = readText(data, "contact_name");
+      const contactEmail = readText(data, "contact_email");
 
       if (!contactName) {
         next.push({
@@ -154,10 +170,10 @@ export function AderirContent({ planos }: AderirContentProps) {
         });
       }
     } else {
-      const agencyCode = String(data.get("agency_code") ?? "").trim();
-      const agencyEmail = String(data.get("email") ?? "").trim();
-      const adminName = String(data.get("admin_name") ?? "").trim();
-      const adminEmail = String(data.get("admin_email") ?? "").trim();
+      const agencyCode = readText(data, "agency_code");
+      const agencyEmail = readText(data, "email");
+      const adminName = readText(data, "admin_name");
+      const adminEmail = readText(data, "admin_email");
 
       if (agencyCode && !/^[A-Za-z0-9_-]+$/.test(agencyCode)) {
         next.push({
@@ -420,10 +436,7 @@ export function AderirContent({ planos }: AderirContentProps) {
               {isEnterprise ? (
                 <div className={styles.card}>
                   <h2 className={styles.formTitle}>Pedido Enterprise</h2>
-                  <p className={styles.formHint}>
-                    Os campos marcados com{" "}
-                    <span className={styles.required}>*</span> são obrigatórios.
-                  </p>
+                  <RequiredHint />
                   <Field
                     id="agency_name"
                     label="Nome da agência"
@@ -462,10 +475,7 @@ export function AderirContent({ planos }: AderirContentProps) {
                 <>
                 <div className={styles.card}>
                   <h2 className={styles.formTitle}>Dados da agência</h2>
-                  <p className={styles.formHint}>
-                    Os campos marcados com{" "}
-                    <span className={styles.required}>*</span> são obrigatórios.
-                  </p>
+                  <RequiredHint />
                   <Field
                     id="agency_name"
                     label="Nome da agência"

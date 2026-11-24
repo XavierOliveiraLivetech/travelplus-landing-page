@@ -1,18 +1,14 @@
 import type { Metadata } from "next";
-import { Outfit, Source_Sans_3 } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { HistorySlideTransition } from "@/components/HistorySlideTransition";
 
-const display = Outfit({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const body = Source_Sans_3({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
+// Geist (same file as the Coming Soon page), self-hosted as a variable font.
+const geist = localFont({
+  src: "./fonts/Geist-VariableFont_wght.ttf",
+  variable: "--font-geist",
+  weight: "100 900",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -30,7 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-PT" className={`${display.variable} ${body.variable}`}>
+    // data-scroll-behavior: Next turns off the CSS smooth scroll while it
+    // positions a new page, so page changes jump instead of gliding.
+    <html
+      lang="pt-PT"
+      className={geist.variable}
+      data-scroll-behavior="smooth"
+    >
       {/* Browser extensions (e.g. ColorZilla's cz-shortcut-listen) add attributes
           to <body> before hydration; ignore those mismatches on this element only. */}
       <body suppressHydrationWarning>

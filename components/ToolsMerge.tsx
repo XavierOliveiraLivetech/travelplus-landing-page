@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   LuBedDouble,
@@ -22,6 +22,8 @@ import { useSectionActive } from "@/lib/useSectionActive";
 import { MotionToggle } from "./MotionToggle";
 import styles from "./ToolsMerge.module.css";
 import { assetPath } from "@/lib/assetPath";
+import type { CssVars } from "@/lib/cssVars";
+import { cx } from "@/lib/cx";
 
 const LOGO_SRC = assetPath("/brand/logo-mark.png");
 
@@ -31,8 +33,6 @@ const LOGO_SRC = assetPath("/brand/logo-mark.png");
  * then everything collapses into a single TravelPlus window that holds
  * every tool. Hidden from assistive tech (the CTA copy carries the meaning).
  */
-
-type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
 type Phase = "idle" | "scatter" | "merge" | "brand" | "dock" | "platform" | "reset";
 
@@ -277,16 +277,14 @@ function BrowserWindow({
   const Icon = spec.icon;
   return (
     <div
-      className={[styles.win, open ? styles.winOpen : "", front ? styles.winFront : ""]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx(styles.win, open && styles.winOpen, front && styles.winFront)}
       style={
         {
           "--x": `${spec.x}%`,
           "--y": `${spec.y}%`,
           "--r": `${spec.r}deg`,
           "--i": index,
-        } as Vars
+        } as CssVars
       }
     >
       <span className={styles.winBar}>
@@ -362,7 +360,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
               "--lx": `${offset.x}px`,
               "--ly": `${offset.y}px`,
               "--ls": LOGO_CENTER_SCALE,
-            } as Vars
+            } as CssVars
           }
         />
       </div>
@@ -370,7 +368,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
       {/* Mirrors the real "A sua viagem" page: timeline + price/payment/quote aside */}
       <div className={styles.trip}>
         <ol className={styles.timeline}>
-          <li className={styles.tlItem} style={{ "--at": "200ms" } as Vars}>
+          <li className={styles.tlItem} style={{ "--at": "200ms" } as CssVars}>
             <span className={styles.tlIcon}>
               <LuPlaneTakeoff aria-hidden />
             </span>
@@ -380,7 +378,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
             <FlightTicket flight={FLIGHT_OUT} />
           </li>
 
-          <li className={styles.tlItem} style={{ "--at": "550ms" } as Vars}>
+          <li className={styles.tlItem} style={{ "--at": "550ms" } as CssVars}>
             <span className={styles.tlIcon}>
               <LuBedDouble aria-hidden />
             </span>
@@ -397,7 +395,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
             </span>
           </li>
 
-          <li className={styles.tlItem} style={{ "--at": "900ms" } as Vars}>
+          <li className={styles.tlItem} style={{ "--at": "900ms" } as CssVars}>
             <span className={styles.tlIcon}>
               <LuShieldCheck aria-hidden />
             </span>
@@ -416,7 +414,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
         </ol>
 
         <div className={styles.aside}>
-          <div className={styles.priceBox} style={{ "--at": "1250ms" } as Vars}>
+          <div className={styles.priceBox} style={{ "--at": "1250ms" } as CssVars}>
             <b className={styles.boxTitle}>Preço da viagem</b>
             {PRICE_LINES.map((line) => (
               <span key={line.label} className={styles.priceLine}>
@@ -430,7 +428,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
             </span>
           </div>
 
-          <div className={styles.pdfBox} style={{ "--at": "1600ms" } as Vars}>
+          <div className={styles.pdfBox} style={{ "--at": "1600ms" } as CssVars}>
             <span className={styles.pdfRow}>
               <span className={styles.pdfIcon}>
                 <LuFileText aria-hidden />
@@ -449,7 +447,7 @@ function PlatformCard({ phase }: { phase: Phase }) {
             </span>
           </div>
 
-          <div className={styles.payBox} style={{ "--at": "1950ms" } as Vars}>
+          <div className={styles.payBox} style={{ "--at": "1950ms" } as CssVars}>
             <span className={styles.btnPrimary}>
               <LuCreditCard aria-hidden />
               Efetuar pagamento
@@ -484,6 +482,7 @@ export function ToolsMerge() {
   // (unless the visitor paused it: then the finished platform stays up).
   useEffect(() => {
     if (reduced || paused) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the demo when the section comes into view
     setOpened(0);
     setPhase(inView ? "scatter" : "idle");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -571,16 +570,19 @@ export function ToolsMerge() {
   };
   const windowsUp = shown === "scatter" || shown === "merge";
 
+  // The pause button only appears once the first window pops up, then stays
+  // for the rest of the visit (also across loops). Leaving the section hides
+  // it again so the next visit starts from a clean, button-less stage.
+  const [toggleShown, setToggleShown] = useState(false);
+  const demoStarted = phase !== "idle" && !(phase === "scatter" && opened === 0);
+  if (inView && demoStarted && !toggleShown) setToggleShown(true);
+  if (!inView && !paused && toggleShown) setToggleShown(false);
+  const showToggle = paused || toggleShown;
+
   return (
     <div
       ref={rootRef}
-      className={[
-        styles.visual,
-        running ? styles.running : "",
-        paused ? styles.paused : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx(styles.visual, running && styles.running, paused && styles.paused)}
       data-phase={shown}
     >
       <div className={styles.stage} aria-hidden="true">
@@ -598,7 +600,7 @@ export function ToolsMerge() {
       </div>
       {!reduced && (
         <MotionToggle
-          className={styles.motionToggle}
+          className={cx(styles.motionToggle, !showToggle && styles.motionToggleHidden)}
           paused={paused}
           onToggle={togglePaused}
           label="a animação da plataforma"

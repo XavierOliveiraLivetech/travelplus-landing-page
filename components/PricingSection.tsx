@@ -17,11 +17,9 @@ import styles from "@/app/site.module.css";
 function PricingCard({
   plano,
   duracao,
-  index,
 }: {
   plano: Plano;
   duracao: DuracaoSubscricao;
-  index: number;
 }) {
   const isEnterprise = plano.requires_sales_contact;
   const price = isEnterprise ? null : plano.precos[duracao];
@@ -32,9 +30,7 @@ function PricingCard({
       className={
         featured ? styles.pricingTicketFeatured : styles.pricingTicket
       }
-      data-pricing-item
       data-reveal
-      data-flight-index={index}
     >
       {featured ? (
         <p className={styles.pricingTicketTab}>Popular</p>
@@ -106,13 +102,12 @@ export function PricingSection() {
     <section
       id="planos"
       className={styles.pricing}
-      data-story-section="pricing"
     >
       <div className={styles.sectionInner}>
-        <h2 className={styles.sectionTitle} data-pricing-shell data-reveal data-flight-index={0}>
+        <h2 className={styles.sectionTitle} data-reveal>
           {PRICING_SECTION.title}
         </h2>
-        <p className={styles.sectionLead} data-pricing-shell data-reveal data-flight-index={1}>
+        <p className={styles.sectionLead} data-reveal>
           {PRICING_SECTION.lead}
         </p>
 
@@ -120,9 +115,7 @@ export function PricingSection() {
           className={styles.pricingDuration}
           role="group"
           aria-label="Duração da subscrição"
-          data-pricing-shell
           data-reveal
-          data-flight-index={2}
         >
           {(Object.keys(DURACAO_LABELS) as DuracaoSubscricao[]).map((key) => (
             <button
@@ -141,13 +134,12 @@ export function PricingSection() {
           ))}
         </div>
 
-        <ul className={styles.pricingGrid} data-pricing-grid>
-          {PLANOS.map((plano, index) => (
+        <ul className={styles.pricingGrid}>
+          {PLANOS.map((plano) => (
             <PricingCard
               key={plano.slug}
               plano={plano}
               duracao={duracao}
-              index={index + 3}
             />
           ))}
         </ul>

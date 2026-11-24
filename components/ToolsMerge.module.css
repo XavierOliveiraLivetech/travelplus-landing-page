@@ -94,6 +94,19 @@
   top: var(--toggle-y, auto);
   z-index: 40;
   transform: translate(-100%, -50%);
+  transition:
+    opacity 0.25s var(--ease-out, ease-out),
+    visibility 0s linear 0s;
+}
+
+/* Hidden until the first window of the demo pops up */
+.motionToggleHidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.2s var(--ease-out, ease-out),
+    visibility 0s linear 0.2s;
 }
 
 /* Desktop: the CTA shares the screen with the header and the two-tier
