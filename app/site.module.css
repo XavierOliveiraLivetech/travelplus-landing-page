@@ -1795,12 +1795,14 @@
 
   /* Shared gap (--section-gap): the full gap above, against the hero band */
   .problem {
-    padding-block: var(--section-gap) var(--section-gap-half);
+    padding-block: var(--section-gap)
+      calc(var(--section-gap-half) + var(--section-gap-extra));
   }
 
   /* Full gap below, against the CTA band */
   .pricing {
-    padding-block: var(--section-gap-half) var(--section-gap);
+    padding-block: calc(var(--section-gap-half) + var(--section-gap-extra))
+      var(--section-gap);
   }
 
   .problem .sectionInner {

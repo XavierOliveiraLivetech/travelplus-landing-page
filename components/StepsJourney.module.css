@@ -209,7 +209,7 @@
        the steps already adds empty space, so it comes out of the bottom pad. */
     --steps-rail: clamp(2.5rem, 5vh, 4rem);
     padding-block: var(--section-gap-half)
-      calc(var(--section-gap-half) - var(--steps-rail));
+      calc(var(--section-gap-half) + var(--section-gap-extra) - var(--steps-rail));
     box-sizing: border-box;
   }
 

@@ -493,7 +493,8 @@
     gap: clamp(4rem, 12vh, 7.5rem);
     /* Shared gap between sections (see --section-gap); +1rem on top because
        the globe rises slightly above the header row */
-    padding-block: calc(var(--section-gap-half) + 1rem) var(--section-gap-half);
+    padding-block: calc(var(--section-gap-half) + var(--section-gap-extra) + 1rem)
+      var(--section-gap-half);
   }
 
   .headRow {

@@ -82,12 +82,15 @@
     --section-pad-y: clamp(5.5rem, 10vh, 7.5rem);
     /*
      * Desktop: the visible space between the content of any two neighbouring
-     * sections (~250px on a 900px-tall screen). Each content section pads
+     * sections (~145px on a 900px-tall screen). Each content section pads
      * half of it top and bottom; next to a full-bleed band (hero, CTA) the
      * section supplies the whole gap on that side.
      */
-    --section-gap: clamp(12rem, 28vh, 18rem);
+    --section-gap: clamp(7rem, 16vh, 10.5rem);
     --section-gap-half: calc(var(--section-gap) / 2);
+    /* Extra air added on each side of the problem → features and
+       steps → pricing boundaries */
+    --section-gap-extra: clamp(1.25rem, 3vh, 2rem);
     /* Wider content column on desktop */
     --max: 80rem;
   }
