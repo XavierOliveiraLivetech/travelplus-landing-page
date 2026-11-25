@@ -19,12 +19,6 @@ export const HERO = {
   lead: "Motor de pesquisa, orçamentos, reservas e gestão - pensado para agências que querem trabalhar com mais rapidez e menos fricção.",
 };
 
-export const PROOF = [
-  { value: "Multi-operador", label: "Pesquise em vários operadores num só fluxo" },
-  { value: "Widget próprio", label: "Integração do widget no site da sua agência" },
-  { value: "Backoffice", label: "Gestão de clientes e reservas num só lugar" },
-] as const;
-
 export const PROBLEM = {
   title: "Menos ferramentas soltas. Mais controlo para a sua agência.",
   lead: "Os seus consultores perdem tempo a saltar entre sites de operadores, folhas de cálculo e emails? O TravelPlus concentra a pesquisa e a venda num fluxo único.",

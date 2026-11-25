@@ -173,10 +173,11 @@ html {
 }
 
 /*
- * Scroll reveals (components/ScrollReveal.tsx): a slow fade with a short
- * rise and a soft, long ease-out, product-page style. No blur — blur
- * filters are expensive on mobile GPUs. !important: some revealed items
- * carry inline GSAP styles (opacity: 1) from their own animations.
+ * Scroll reveals (components/ScrollReveal.tsx): a one-shot fade with a
+ * short rise and a soft, long ease-out. Once shown, items stay visible.
+ * No blur — blur filters are expensive on mobile GPUs. !important: some
+ * revealed items carry inline GSAP styles (opacity: 1) from their own
+ * animations.
  */
 :root {
   --ease-reveal: cubic-bezier(0.28, 0.11, 0.32, 1);

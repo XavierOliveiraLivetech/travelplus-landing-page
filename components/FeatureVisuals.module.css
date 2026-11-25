@@ -72,70 +72,131 @@
   height: 0.72rem;
 }
 
-/* ——— 04 · Masked module grid ——— */
+/* ——— 04 · Module network wired to the TravelPlus hub ——— */
 
-.cellArea {
+.netArea {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   overflow: hidden;
   container-type: size;
-  /* Fade the lattice out towards the card's edges (source: radial mask) */
+  /* The web dissolves towards the card's edges */
   mask-image: radial-gradient(
-    ellipse 60% 70% at 50% 50%,
-    #000 25%,
-    transparent 78%
+    ellipse 78% 88% at 50% 50%,
+    #000 62%,
+    transparent 100%
   );
 }
 
-.cells {
-  /* Three rows always fit the card; seven columns may run past the sides */
-  --cell: clamp(2.75rem, min(30cqh, 17cqw), 4.4rem);
-  /* Pinned to the area's centre: when the lattice is wider than the card,
-     grid centring would let it overflow to the right and push the logo
-     (the middle cell) off-centre. Translating by half its own size keeps
-     the logo dead centre at every width; the sides spill out equally. */
+/* 3:2 stage shared with the SVG viewBox (NET_W × NET_H), as large as the
+ * area allows */
+.net {
+  --line: color-mix(in srgb, var(--brand-blue) 12%, var(--linha));
+  --link: color-mix(in srgb, var(--brand-orange) 85%, var(--linha));
+  position: relative;
+  width: min(100cqw, 150cqh, 26rem);
+  aspect-ratio: 3 / 2;
+  container-type: inline-size;
+}
+
+.netLines {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Grey spoke left behind by each orange link (drawn at the same pace). Both
+ * are pulled back into the hub with their module, so the finished frame has
+ * no lines left */
+.spoke {
+  stroke: var(--line);
+  stroke-width: 1.2;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+/* The orange link that runs out from the hub to a module */
+.spokeLit {
+  stroke: var(--link);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.node,
+.hub {
+  position: absolute;
   display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
   transform: translate(-50%, -50%);
 }
 
-.cell {
-  display: grid;
-  place-items: center;
-  width: var(--cell);
-  height: var(--cell);
-  margin: 0 -1px -1px 0;
-  border: 1px solid color-mix(in srgb, var(--brand-blue) 10%, var(--linha));
+/* Finished frame: the modules have been pulled into the hub (gone); the
+ * hub's circle has dissolved and only the enlarged, glowing logo remains */
+.node {
+  opacity: 0;
+  width: 12cqw;
+  height: 12cqw;
+  background: var(--ui-violet-soft);
   color: color-mix(in srgb, var(--brand-blue) 45%, var(--branco));
-  font-size: 1.15rem;
-  transition:
-    background-color var(--motion-base) var(--ease-out),
-    color var(--motion-base) var(--ease-out);
+  font-size: 5cqw;
 }
 
-.cell[data-icon] {
-  background: var(--branco);
-}
-
-.cell[data-center] {
-  position: relative;
+.hub {
+  /* --brand-orange (#d87020) at 45%, spelt out: the color-mix() form came
+     out near-black inside the drop-shadow() filter */
+  --glow: rgb(216 112 32 / 0.45);
   z-index: 1;
-  border-color: color-mix(in srgb, var(--brand-orange) 40%, var(--linha));
-  background: var(--ui-orange-soft);
+  /* Sized for the logo's one, final size (it never grows or shrinks) */
+  width: 38cqw;
+  height: 38cqw;
+  border-color: transparent;
+  background: transparent;
+  transform: translate(-50%, -50%);
 }
 
-:global([data-feature-card]:hover) .cell[data-icon] {
-  color: var(--brand-orange);
+/* The hub's outline is this SVG circle, not the border, so it can be drawn
+ * as a line; gone in the finished frame (only the logo remains) */
+.hubRing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+  pointer-events: none;
 }
 
-.cellLogo {
+.hubRing circle {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2.2;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+/* One orange ring that bursts out of the hub once the modules have landed */
+.hub::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1.5px solid var(--link);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hubLogo {
   display: block;
-  width: 72%;
+  width: 85%;
   height: auto;
+  filter: drop-shadow(0 0.4rem 0.9rem var(--glow));
 }
 
 /* ——— Mini product UIs (operadores, orçamentos, cliente) ——— */
@@ -506,9 +567,18 @@
     transform: scale(0.85);
   }
 
-  .visual:not([data-running]) .cell[data-center] {
-    border-color: color-mix(in srgb, var(--brand-blue) 10%, var(--linha));
-    background: var(--branco);
+  /* Gestão: only the logo until its turn — no modules, no lines */
+  .visual:not([data-running]) .node {
+    opacity: 0;
+  }
+
+  /* …the bare logo, its circle only drawn just before the links set off */
+  .visual:not([data-running]) .hub {
+    transform: translate(-50%, -50%);
+  }
+
+  .visual:not([data-running]) .hubLogo {
+    filter: none;
   }
 
   /* 01 · Widget (3s): type the destination, then click "Pesquisar" */
@@ -560,15 +630,53 @@
     animation-delay: calc(0.2s + var(--stage) * 0.75s);
   }
 
-  /* 05 · Back office (2.4s): each module lights up, then the hub */
-  .visual[data-running] .cell[data-icon] {
-    animation: cellLight 0.9s var(--ease-out) both;
-    animation-delay: calc(var(--i) * 0.3s);
+  /* 05 · Back office (4.3s):
+   * 1. the bare logo is there from the start; while the module circles pop
+   *    in one by one, the logo's circle is drawn round it like a line;
+   * 2. an orange link grows out of the logo to each module, each at its own
+   *    pace, leaving a grey spoke behind and ringing the module on arrival;
+   * 3. the modules are pulled into the logo, their lines shrinking with them
+   *    (same delay, duration and easing, so each line ends at its module);
+   * 4. the logo's circle dissolves (the logo keeps its size), a ring bursts out and
+   *    the logo is left glowing. Everything has finished by 4.2s. */
+  .visual[data-running] .node {
+    animation:
+      nodeIn 0.45s var(--ease-out) calc(var(--i) * 0.2s) both,
+      ringOn 0.25s var(--ease-out)
+        calc(1.1s + var(--j) * 0.3s + 0.9s + var(--s) * 0.5s) forwards,
+      nodeToHub 0.55s cubic-bezier(0.55, 0, 1, 0.45)
+        calc(3s + var(--j) * 0.1s) forwards;
   }
 
-  /* The hub turns orange only once every module has lit up */
-  .visual[data-running] .cell[data-center] {
-    animation: hubOn 0.8s var(--ease-out) 1.6s both;
+  .visual[data-running] .hub {
+    animation:
+      circleIn 0.3s var(--ease-out) 0.8s both,
+      hubOn 0.3s var(--ease-out) 3.4s forwards;
+  }
+
+  /* The circle is drawn round the logo while the modules pop in, and fades
+   * once the modules have landed */
+  .visual[data-running] .hubRing circle {
+    animation:
+      ringDraw 1.05s var(--ease-in-out) 0.05s both,
+      ringFade 0.28s var(--ease-out) 3.4s forwards;
+  }
+
+  .visual[data-running] .hub::after {
+    animation: ringBurst 0.8s var(--ease-out) 3.45s forwards;
+  }
+
+  .visual[data-running] .hubLogo {
+    animation: logoGlow 0.6s var(--ease-out) 3.6s both;
+  }
+
+  .visual[data-running] .spoke,
+  .visual[data-running] .spokeLit {
+    animation:
+      spokeOut calc(0.9s + var(--s) * 0.5s) var(--ease-in-out)
+        calc(1.1s + var(--j) * 0.3s) both,
+      spokeIn 0.55s cubic-bezier(0.55, 0, 1, 0.45)
+        calc(3s + var(--j) * 0.1s) forwards;
   }
 }
 
@@ -743,35 +851,131 @@
   }
 }
 
-@keyframes cellLight {
-  0%,
-  100% {
-    background: var(--branco);
-    color: color-mix(in srgb, var(--brand-blue) 45%, var(--branco));
+@keyframes nodeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
   }
-  40% {
-    background: var(--ui-orange-soft);
-    color: var(--brand-orange);
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 }
 
-@keyframes hubOn {
-  0% {
-    border-color: color-mix(in srgb, var(--brand-blue) 10%, var(--linha));
-    background: var(--branco);
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-orange) 45%, transparent);
+@keyframes ringOn {
+  from {
+    border-color: var(--line);
   }
-  100% {
-    border-color: color-mix(in srgb, var(--brand-orange) 40%, var(--linha));
-    background: var(--ui-orange-soft);
-    box-shadow: 0 0 0 10px transparent;
+  to {
+    border-color: var(--link);
+  }
+}
+
+/* Pulled into the hub: slides onto its centre (--dx/--dy, in cqw) and
+ * shrinks away under it */
+@keyframes nodeToHub {
+  from {
+    opacity: 1;
+    border-color: var(--link);
+    transform: translate(-50%, -50%);
+  }
+  to {
+    opacity: 0;
+    border-color: var(--link);
+    transform: translate(
+        calc(-50% + var(--dx) * 1cqw),
+        calc(-50% + var(--dy) * 1cqw)
+      )
+      scale(0.4);
+  }
+}
+
+/* Once its outline is drawn, the logo's circle fills white (at its resting
+ * size: this also holds the hub small until hubOn takes over) */
+@keyframes circleIn {
+  from {
+    transform: translate(-50%, -50%);
+    background: transparent;
+  }
+  to {
+    transform: translate(-50%, -50%);
+    background: var(--branco);
+  }
+}
+
+@keyframes ringDraw {
+  from {
+    opacity: 1;
+    stroke-dashoffset: 1;
+  }
+  to {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ringFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Every module has landed: the hub's circle dissolves, leaving the logo */
+@keyframes hubOn {
+  from {
+    background: var(--branco);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@keyframes ringBurst {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes logoGlow {
+  from {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  to {
+    filter: drop-shadow(0 0.4rem 0.9rem var(--glow));
+  }
+}
+
+/* stroke-dasharray 1 on a pathLength-1 line: offset 1 → 0 grows the link
+ * out of the hub, 0 → 1 pulls it back in */
+@keyframes spokeOut {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes spokeIn {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 1;
   }
 }
 
 
 @media (prefers-reduced-motion: reduce) {
-  .frame,
-  .cell {
+  .frame {
     transition: none;
   }
 }

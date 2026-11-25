@@ -12,21 +12,14 @@ const MAX_STAGGER_STEPS = 4;
  * reading, not while the element is still at the very bottom of the screen.
  */
 const TRIGGER_FROM_BOTTOM = 0.25;
-/**
- * An element fades out once it is entirely within this share of either
- * screen edge, so the fade-out is still seen as it leaves. Smaller than the
- * fade-in trigger so the two never fight at one scroll position.
- */
-const LEAVE_EDGE = 0.08;
 const IN_MS = 1100;
-const OUT_MS = 650;
 /** Longest transition + max stagger, with room to spare. */
 const ANIM_CLEANUP_MS = 1900;
 
 /**
  * Natural-scroll reveals on every screen size: elements marked `data-reveal`
- * fade in and rise a little as they come into view, and fade out again as
- * they leave the screen (scrolling either way), so each visit replays it.
+ * fade in and rise a little as they come into view — once. After that they
+ * stay visible regardless of scroll direction.
  *
  * - Content is never removed from the layout (no shifts while reading) and
  *   anything already on screen at load stays visible.
@@ -34,8 +27,6 @@ const ANIM_CLEANUP_MS = 1900;
  *   way up the viewport, so tall stacks (pricing cards on a short phone)
  *   can't stay hidden.
  * - Items that enter in the same scroll step get a short stagger.
- * - Demos inside an element (useSectionActive) stop while it is hidden and
- *   restart from the first frame when it fades back in.
  * - Off for prefers-reduced-motion, where everything is simply shown.
  */
 export function ScrollReveal() {
@@ -49,11 +40,12 @@ export function ScrollReveal() {
       el.style.removeProperty("--reveal-dur");
     };
 
-    const animate = (el: HTMLElement, delay: number, durationMs: number) => {
+    const show = (el: HTMLElement, delay: number) => {
       window.clearTimeout(timers.get(el));
       el.style.setProperty("--reveal-delay", `${delay}ms`);
-      el.style.setProperty("--reveal-dur", `${durationMs}ms`);
+      el.style.setProperty("--reveal-dur", `${IN_MS}ms`);
       el.dataset.revealAnim = "";
+      delete el.dataset.revealPending;
       timers.set(
         el,
         window.setTimeout(() => {
@@ -63,41 +55,14 @@ export function ScrollReveal() {
       );
     };
 
-    const show = (el: HTMLElement, delay: number) => {
-      animate(el, delay, IN_MS);
-      delete el.dataset.revealPending;
-    };
-
-    /**
-     * `side` is the screen edge the item is hidden past. The CSS offsets it
-     * towards that edge, so it always moves with the scroll: from below it
-     * rises in, from above (scrolling back up) it comes down in, and on the
-     * way out it drifts off through the edge it leaves by.
-     */
-    const hide = (el: HTMLElement, side: Side) => {
-      animate(el, 0, OUT_MS);
-      el.dataset.revealPending = side;
-    };
-
     let tracked: HTMLElement[] = [];
     let frame = 0;
 
-    /*
-     * Level-based, not edge-based: every scroll frame compares each element's
-     * current position with two disjoint zones, so the result only depends on
-     * where it is now — never on which crossings an observer happened to see
-     * (fast scrolls and turning around inside an edge band used to leave
-     * items hidden on screen).
-     *   show: top above the trigger line AND bottom below the top band
-     *   hide: entirely inside the top band OR entirely inside the bottom band
-     * In between, an item keeps its state (hysteresis, no flicker).
-     */
     const zones = () => {
       const vh = window.innerHeight;
       return {
         trigger: vh * (1 - TRIGGER_FROM_BOTTOM),
-        topBand: vh * LEAVE_EDGE,
-        bottomBand: vh * (1 - LEAVE_EDGE),
+        topBand: vh * 0.08,
       };
     };
     type Box = { top: number; bottom: number; left: number; height: number };
@@ -120,10 +85,31 @@ export function ScrollReveal() {
       const height = el.offsetHeight;
       return { top, bottom: top + height, left, height };
     };
+    /**
+     * Items sharing a `data-reveal-group` value enter as one block: they use
+     * the union of their boxes, so they all reveal in the same step (staggered
+     * top-to-bottom, then left-to-right) instead of one at a time.
+     */
+    const triggerBox = (el: HTMLElement): Box => {
+      const own = box(el);
+      const group = el.dataset.revealGroup;
+      if (!group) return own;
+      const members = document.querySelectorAll<HTMLElement>(
+        `[data-reveal-group="${CSS.escape(group)}"]`,
+      );
+      let top = Infinity;
+      let bottom = -Infinity;
+      for (const m of members) {
+        const r = box(m);
+        if (r.height === 0) continue;
+        top = Math.min(top, r.top);
+        bottom = Math.max(bottom, r.bottom);
+      }
+      if (top === Infinity || own.height === 0) return own;
+      return { top, bottom, left: own.left, height: bottom - top };
+    };
     const inShowZone = (r: Box, z: ReturnType<typeof zones>) =>
       r.top < z.trigger && r.bottom > z.topBand;
-    const inHideZone = (r: Box, z: ReturnType<typeof zones>) =>
-      r.bottom <= z.topBand || r.top >= z.bottomBand;
     /** Which edge a hidden item sits beyond (by its middle). */
     const sideOf = (r: Box): Side =>
       r.top + r.height / 2 < window.innerHeight / 2 ? "top" : "bottom";
@@ -132,27 +118,24 @@ export function ScrollReveal() {
       frame = 0;
       const z = zones();
       const entering: { el: HTMLElement; r: Box }[] = [];
+      const stillPending: HTMLElement[] = [];
       for (const el of tracked) {
-        const r = box(el);
-        if (r.height === 0) continue; // display:none copy
-        const pending = el.hasAttribute("data-reveal-pending");
-        if (pending && inShowZone(r, z)) entering.push({ el, r });
-        else if (!pending && inHideZone(r, z)) hide(el, sideOf(r));
-        else if (pending && inHideZone(r, z)) {
-          // Still hidden but jumped past the other edge (fast scroll):
-          // face the edge it will come back through. Invisible, no motion.
-          const side = sideOf(r);
-          if (el.dataset.revealPending !== side) {
-            clearAnim(el);
-            el.dataset.revealPending = side;
-          }
+        const r = triggerBox(el);
+        if (r.height === 0) {
+          // display:none copy — keep watching until it becomes measurable.
+          stillPending.push(el);
+          continue;
         }
+        if (inShowZone(r, z)) entering.push({ el, r });
+        else stillPending.push(el);
       }
       entering
         .sort((a, b) => a.r.top - b.r.top || a.r.left - b.r.left)
         .forEach(({ el }, step) =>
           show(el, Math.min(step, MAX_STAGGER_STEPS) * STAGGER_MS),
         );
+      // Drop revealed items so they never re-hide on later scrolls.
+      tracked = stillPending;
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -178,16 +161,24 @@ export function ScrollReveal() {
       teardown();
       if (reduce.matches) return;
 
-      tracked = Array.from(
+      const all = Array.from(
         document.querySelectorAll<HTMLElement>("[data-reveal]"),
       );
       // Starting state, without animation: shown if it is in the show zone
-      // (on screen at load), hidden otherwise.
+      // (on screen at load), hidden otherwise — and only those stay tracked.
       const z = zones();
-      for (const el of tracked) {
-        const r = box(el);
-        if (r.height === 0) continue;
-        if (!inShowZone(r, z)) el.dataset.revealPending = sideOf(r);
+      tracked = [];
+      for (const el of all) {
+        const r = triggerBox(el);
+        if (r.height === 0) {
+          el.dataset.revealPending = "bottom";
+          tracked.push(el);
+          continue;
+        }
+        if (!inShowZone(r, z)) {
+          el.dataset.revealPending = sideOf(r);
+          tracked.push(el);
+        }
       }
 
       window.addEventListener("scroll", schedule, { passive: true });

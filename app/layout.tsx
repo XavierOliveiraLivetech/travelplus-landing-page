@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { HistorySlideTransition } from "@/components/HistorySlideTransition";
+import { InPageLinks } from "@/components/InPageLinks";
 
 // Geist (same file as the Coming Soon page), self-hosted as a variable font.
 const geist = localFont({
@@ -37,6 +38,7 @@ export default function RootLayout({
           to <body> before hydration; ignore those mismatches on this element only. */}
       <body suppressHydrationWarning>
         <HistorySlideTransition />
+        <InPageLinks />
         {children}
       </body>
     </html>

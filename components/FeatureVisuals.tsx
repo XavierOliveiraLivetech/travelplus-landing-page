@@ -21,7 +21,7 @@ import { useStepTurn } from "./StepVisuals";
 /*
  * Illustrations for the feature bento (3 + 2 layout adapted from the 21st.dev
  * "Feature Highlights Grid"):
- * - gestão: the 21st.dev-style masked module grid;
+ * - gestão: a small network, the modules wired to the TravelPlus hub;
  * - widget, operadores, cliente: mini product UIs floating on the card (the
  *   search widget, the operator comparison, the client area);
  * - orçamentos: the quote timeline on its own, no panel.
@@ -147,52 +147,90 @@ function QuotesVisual() {
 
 /* ——— 04 · Centralised management: back-office modules, one hub ——— */
 
-const GRID_COLS = 7;
-const GRID_ROWS = 3;
-const GRID_CENTER = 1 * GRID_COLS + 3;
-/** Order the module icons light up in during the demo (cell → turn). */
-const GRID_ORDER: Record<number, number> = {
-  [GRID_CENTER - 2]: 0,
-  [GRID_CENTER - GRID_COLS - 1]: 1,
-  [GRID_CENTER - GRID_COLS + 1]: 2,
-  [GRID_CENTER + 2]: 3,
-  [GRID_CENTER + GRID_COLS]: 4,
-};
-const GRID_ICONS: Record<number, ReactNode> = {
-  [GRID_CENTER - 2]: <LuUsers />,
-  [GRID_CENTER + 2]: <LuRefreshCw />,
-  [GRID_CENTER - GRID_COLS - 1]: <LuCreditCard />,
-  [GRID_CENTER - GRID_COLS + 1]: <LuCalendarDays />,
-  [GRID_CENTER + GRID_COLS]: <LuSettings />,
-};
+/* A small network: the logo is the hub and the back-office modules are nodes
+ * wired to it. Coordinates live in a 300 × 200 space shared by the SVG lines
+ * and the HTML nodes (positioned in %), so both stay aligned at any size. */
+const NET_W = 300;
+const NET_H = 200;
+const HUB = { x: 150, y: 100 };
+
+/** i: order the modules light up in; j, s: fixed offsets (0–1) so each spoke
+ * starts (j) and draws (s) at its own pace. */
+const MODULES = [
+  { key: "users", x: 32, y: 100, i: 0, j: 0.6, s: 0.2, icon: <LuUsers /> },
+  { key: "card", x: 70, y: 28, i: 1, j: 0, s: 0.8, icon: <LuCreditCard /> },
+  { key: "calendar", x: 230, y: 30, i: 2, j: 0.9, s: 0.4, icon: <LuCalendarDays /> },
+  { key: "sync", x: 268, y: 100, i: 3, j: 0.3, s: 1, icon: <LuRefreshCw /> },
+  { key: "settings", x: 212, y: 176, i: 4, j: 0.5, s: 0, icon: <LuSettings /> },
+] as const;
+
+type Point = { x: number; y: number };
+
+const pct = (p: Point) => ({
+  left: `${(p.x / NET_W) * 100}%`,
+  top: `${(p.y / NET_H) * 100}%`,
+});
 
 function BackofficeVisual() {
   return (
-    <div className={styles.cellArea}>
-      <div
-        className={styles.cells}
-        style={{ gridTemplateColumns: `repeat(${GRID_COLS}, var(--cell))` }}
-      >
-        {Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => (
+    <div className={styles.netArea}>
+      <div className={styles.net}>
+        <svg
+          className={styles.netLines}
+          viewBox={`0 0 ${NET_W} ${NET_H}`}
+          preserveAspectRatio="none"
+        >
+          {MODULES.map((m) => (
+            <g key={m.key} style={{ "--j": m.j, "--s": m.s } as CssVars}>
+              <line
+                className={styles.spoke}
+                x1={HUB.x}
+                y1={HUB.y}
+                x2={m.x}
+                y2={m.y}
+                pathLength={1}
+              />
+              <line
+                className={styles.spokeLit}
+                x1={HUB.x}
+                y1={HUB.y}
+                x2={m.x}
+                y2={m.y}
+                pathLength={1}
+              />
+            </g>
+          ))}
+        </svg>
+
+        {MODULES.map((m) => (
           <span
-            key={i}
-            className={styles.cell}
-            data-center={i === GRID_CENTER ? "" : undefined}
-            data-icon={GRID_ICONS[i] ? "" : undefined}
+            key={m.key}
+            className={styles.node}
             style={
-              i in GRID_ORDER
-                ? ({ "--i": GRID_ORDER[i] } as CssVars)
-                : undefined
+              {
+                ...pct(m),
+                "--i": m.i,
+                "--j": m.j,
+                "--s": m.s,
+                // Offset to the hub in cqw of .net: 1 cqw = 3 units of the
+                // 300-wide space, and the 3:2 stage makes y scale the same
+                "--dx": (HUB.x - m.x) / 3,
+                "--dy": (HUB.y - m.y) / 3,
+              } as CssVars
             }
           >
-            {i === GRID_CENTER ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={LOGO_SRC} alt="" className={styles.cellLogo} />
-            ) : (
-              GRID_ICONS[i]
-            )}
+            {m.icon}
           </span>
         ))}
+
+        <span className={styles.hub} style={pct(HUB)}>
+          {/* The hub's circle, drawn as a line while the modules appear */}
+          <svg className={styles.hubRing} viewBox="0 0 100 100">
+            <circle cx={50} cy={50} r={48.5} pathLength={1} />
+          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_SRC} alt="" className={styles.hubLogo} />
+        </span>
       </div>
     </div>
   );
@@ -248,7 +286,7 @@ const DEMO_MS: Record<FeatureId, number> = {
   operadores: 3400,
   cliente: 1800,
   orcamentos: 2800,
-  gestao: 2400,
+  gestao: 4300,
 };
 
 export function FeatureVisual({

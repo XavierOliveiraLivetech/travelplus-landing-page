@@ -30,11 +30,11 @@ const FLIGHT_EASE = "none";
  */
 const VISIBLE_RATIO = 0.7;
 /**
- * The cards fade out once the area is within this share of a screen edge
- * (same band as ScrollReveal), and the flight replays on the next visit.
+ * The tilt follows the path direction measured this far ahead of and behind
+ * the plane, as a share of its width. A window about the plane's own size
+ * averages out small bends, so the body banks gently instead of twitching.
  */
-const LEAVE_EDGE = 0.08;
-const LEAVE_S = 0.65;
+const TILT_WINDOW = 0.4;
 
 type Pt = { x: number; y: number };
 type Cubic = [Pt, Pt, Pt, Pt];
@@ -63,24 +63,76 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-/** Catmull-Rom-style smoothing through `points` as cubic segments. */
-function smoothThrough(points: Pt[], tension = 0.44): Cubic[] {
+/**
+ * Slopes of a natural cubic spline through `values` at each knot, with
+ * knots spaced by `gaps` (tridiagonal solve, zero curvature at both ends).
+ */
+function naturalSlopes(values: number[], gaps: number[]): number[] {
+  const n = values.length;
+  const sub = new Float64Array(n);
+  const diag = new Float64Array(n);
+  const sup = new Float64Array(n);
+  const rhs = new Float64Array(n);
+  diag[0] = 1;
+  diag[n - 1] = 1;
+  for (let i = 1; i < n - 1; i += 1) {
+    sub[i] = gaps[i - 1];
+    diag[i] = 2 * (gaps[i - 1] + gaps[i]);
+    sup[i] = gaps[i];
+    rhs[i] =
+      3 *
+      ((values[i + 1] - values[i]) / gaps[i] -
+        (values[i] - values[i - 1]) / gaps[i - 1]);
+  }
+  for (let i = 1; i < n; i += 1) {
+    const m = sub[i] / diag[i - 1];
+    diag[i] -= m * sup[i - 1];
+    rhs[i] -= m * rhs[i - 1];
+  }
+  // Half second derivatives at each knot.
+  const c = new Float64Array(n);
+  c[n - 1] = rhs[n - 1] / diag[n - 1];
+  for (let i = n - 2; i >= 0; i -= 1) {
+    c[i] = (rhs[i] - sup[i] * c[i + 1]) / diag[i];
+  }
+  const slopes: number[] = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    slopes.push(
+      (values[i + 1] - values[i]) / gaps[i] - (gaps[i] * (2 * c[i] + c[i + 1])) / 3,
+    );
+  }
+  const g = gaps[n - 2];
+  slopes.push((values[n - 1] - values[n - 2]) / g + (g * (c[n - 2] + 2 * c[n - 1])) / 3);
+  return slopes;
+}
+
+/**
+ * Natural cubic spline through `points` (chord-length spacing) as Bézier
+ * segments. Unlike Catmull-Rom, curvature stays continuous at every point,
+ * so the plane's turn rate never jumps where two segments meet.
+ */
+function smoothThrough(points: Pt[]): Cubic[] {
+  if (points.length < 2) return [];
+  const gaps: number[] = [];
+  for (let i = 0; i < points.length - 1; i += 1) {
+    gaps.push(
+      Math.max(
+        1e-6,
+        Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y),
+      ),
+    );
+  }
+  const dx = naturalSlopes(points.map((p) => p.x), gaps);
+  const dy = naturalSlopes(points.map((p) => p.y), gaps);
   const segments: Cubic[] = [];
   for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] ?? points[i];
     const p1 = points[i];
     const p2 = points[i + 1];
-    const p3 = points[i + 2] ?? p2;
+    const h = gaps[i] / 3;
     segments.push([
       p1,
-      {
-        x: p1.x + ((p2.x - p0.x) * tension) / 3,
-        y: p1.y + ((p2.y - p0.y) * tension) / 3,
-      },
-      {
-        x: p2.x - ((p3.x - p1.x) * tension) / 3,
-        y: p2.y - ((p3.y - p1.y) * tension) / 3,
-      },
+      { x: p1.x + dx[i] * h, y: p1.y + dy[i] * h },
+      { x: p2.x - dx[i + 1] * h, y: p2.y - dy[i + 1] * h },
       p2,
     ]);
   }
@@ -156,14 +208,14 @@ function headerBottom() {
 }
 
 /**
- * "Como funciona" plane: once the whole flight area is on screen it crosses
- * the three step cards left to right on its own clock, revealing each card
- * as its nose reaches it. It plays on every visit: when the area scrolls off
- * screen (either way) the cards fade out, and coming back replays it.
+ * "Como funciona" plane: once the flight area is on screen it crosses the
+ * three step cards left to right on its own clock, revealing each card as
+ * its nose reaches it. One-shot: after the pass, the cards stay visible
+ * and scrolling away never hides them or replays the flight.
  *
  * Render it as a direct child of the positioned section (the plane flies in
- * its coordinates); the space that must be fully on screen is the element
- * marked `data-steps-flight-area` inside it.
+ * its coordinates); the space that must be on screen is the element marked
+ * `data-steps-flight-area` inside it.
  *
  * Step items carry `data-reveal-gate`; `data-revealed="true"` is set as the
  * plane uncovers them so their own demos (useSectionActive) wait for it.
@@ -185,17 +237,10 @@ export function StepsPlaneFlight() {
     const items = () =>
       Array.from(area.querySelectorAll<HTMLElement>("[data-step-item]"));
 
-    /**
-     * +1 while the cards are hidden below (they rise in), -1 once they left
-     * through the top (scrolling back up, they come down in) — like the
-     * page's other reveals.
-     */
-    let side = 1;
-
     const paintItem = (item: HTMLElement, amount: number) => {
       gsap.set(item, {
         opacity: amount,
-        y: (1 - amount) * 14 * side,
+        y: (1 - amount) * 14,
         filter: amount > 0.9 ? "none" : `blur(${(1 - amount) * 4}px)`,
       });
       const revealed = amount > 0.6 ? "true" : "false";
@@ -215,6 +260,9 @@ export function StepsPlaneFlight() {
       setPlaneMounted(true);
 
       let sampler: PathSampler | null = null;
+      let tiltReach = 100;
+      // Card positions, measured with the path instead of on every frame.
+      let itemBoxes: { item: HTMLElement; left: number; width: number }[] = [];
       const flight = { progress: 0 };
       let state: "idle" | "playing" | "done" = "idle";
       let tween: gsap.core.Tween | null = null;
@@ -248,13 +296,12 @@ export function StepsPlaneFlight() {
         const end = route[route.length - 1];
         end.x = Math.max(end.x, w + planeW * 0.8);
         sampler = createPathSampler(smoothThrough(route));
-      };
-
-      const itemLefts = () =>
-        items().map((item) => {
+        tiltReach = planeW * TILT_WINDOW;
+        itemBoxes = items().map((item) => {
           const offset = layoutOffset(item, root);
           return { item, left: offset?.x ?? 0, width: item.offsetWidth };
         });
+      };
 
       const placePlane = () => {
         if (!sampler || sampler.length <= 0) {
@@ -263,8 +310,8 @@ export function StepsPlaneFlight() {
         }
         const distance = flight.progress * sampler.length;
         const point = sampler.pointAt(distance);
-        const ahead = sampler.pointAt(distance + 10);
-        const behind = sampler.pointAt(distance - 10);
+        const ahead = sampler.pointAt(distance + tiltReach);
+        const behind = sampler.pointAt(distance - tiltReach);
         const dx = ahead.x - behind.x;
         const dy = ahead.y - behind.y;
         const tilt = (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -275,52 +322,23 @@ export function StepsPlaneFlight() {
         plane.style.transform = `translate(${point.x}px, ${point.y}px) translate(-65%, -50%) rotate(${tilt}deg)`;
 
         // Reveal each card as the nose crosses it.
-        for (const { item, left, width } of itemLefts()) {
+        for (const { item, left, width } of itemBoxes) {
           const revealAt = left + width * 0.12;
           const spread = Math.max(48, width * 0.5);
           paintItem(item, clamp((point.x - revealAt) / spread, 0, 1));
         }
       };
 
-      /** Stops the flight and hides the plane, ready for the next take-off. */
-      const stop = () => {
-        tween?.kill();
-        tween = null;
-        state = "idle";
-        flight.progress = 0;
-        plane.style.opacity = "0";
-      };
-
-      const arm = () => {
-        stop();
-        for (const item of items()) paintItem(item, 0);
-      };
-
-      /** Leaving the screen: fade the cards out and wait for the next visit. */
-      const leave = (edge: "top" | "bottom") => {
-        stop();
-        side = edge === "top" ? -1 : 1;
-        const list = items();
-        for (const item of list) item.dataset.revealed = "false";
-        gsap.to(list, {
-          opacity: 0,
-          y: 14 * side,
-          duration: LEAVE_S,
-          ease: "power1.in",
-          overwrite: true,
-        });
-      };
-
       const finish = () => {
         tween = null;
         state = "done";
         plane.style.opacity = "0";
-        for (const item of items()) paintItem(item, 1);
+        // Clear inline reveal styles so the cards stay fully visible.
+        showAll();
+        window.removeEventListener("scroll", schedule);
       };
 
       const play = () => {
-        // A fade-out still running from a quick leave must not fight the flight.
-        gsap.killTweensOf(items());
         measure();
         if (!sampler) {
           finish();
@@ -347,35 +365,13 @@ export function StepsPlaneFlight() {
         return Math.max(0, seen) / Math.min(rect.height || 1, room);
       };
 
-      /** Nothing of the area is left outside the thin edge bands. */
-      const areaLeaving = (): "top" | "bottom" | null => {
-        const top = headerBottom();
-        const band = window.innerHeight * LEAVE_EDGE;
-        const rect = area.getBoundingClientRect();
-        if (rect.bottom < top + band) return "top";
-        if (rect.top > window.innerHeight - band) return "bottom";
-        return null;
-      };
-
       let frame = 0;
       const check = () => {
         frame = 0;
-        const edge = areaLeaving();
-        // Scrolled away (up or down): fade out so the next visit replays it.
-        if (state !== "idle" && edge) {
-          leave(edge);
-          return;
-        }
-        // Idle off screen: face the edge it will come back through.
-        if (state === "idle" && edge && side !== (edge === "top" ? -1 : 1)) {
-          side = edge === "top" ? -1 : 1;
-          gsap.killTweensOf(items());
-          for (const item of items()) paintItem(item, 0);
-          return;
-        }
         if (state === "idle" && areaOnScreen() >= VISIBLE_RATIO) play();
       };
       const schedule = () => {
+        if (state === "done") return;
         if (!frame) frame = requestAnimationFrame(check);
       };
 
@@ -383,13 +379,14 @@ export function StepsPlaneFlight() {
       const onResize = () => {
         cancelAnimationFrame(resizeFrame);
         resizeFrame = requestAnimationFrame(() => {
+          if (state === "done") return;
           measure();
           if (state === "playing") placePlane();
           schedule();
         });
       };
 
-      arm();
+      for (const item of items()) paintItem(item, 0);
       schedule();
 
       window.addEventListener("scroll", schedule, { passive: true });

@@ -164,7 +164,7 @@ export function FeaturesDial() {
               Tudo o que a agência precisa num só sítio
             </h2>
             <p className={siteStyles.sectionLead}>
-              Do primeiro contacto com o cliente até à reserva confirmada — sem
+              Do primeiro contacto com o cliente até à reserva confirmada - sem
               mudar de ferramenta a meio do processo.
             </p>
           </header>

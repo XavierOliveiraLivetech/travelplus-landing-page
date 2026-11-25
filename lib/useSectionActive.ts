@@ -9,7 +9,9 @@ import { type RefObject, useEffect, useState } from "react";
  * - inside a scroll reveal (`data-reveal`), until it is no longer pending;
  * - inside a `data-reveal-gate` (the "Como funciona" cards the plane
  *   uncovers), until the gate is marked `data-revealed="true"`.
- * So demos never run while their card is still invisible.
+ * So demos never run while their card is still invisible. Scroll reveals
+ * are one-shot; after the first fade-in, only intersection (and gates)
+ * can turn a demo off and on again.
  *
  * Use the false → true flip to restart an animation from its first frame.
  */

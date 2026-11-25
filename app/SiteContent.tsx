@@ -1,5 +1,5 @@
 import { FeaturesDial } from "@/components/FeaturesDial";
-import { HeroHighlights } from "@/components/HeroHighlights";
+import { GrowBand } from "@/components/GrowBand";
 import { PlatformFlow } from "@/components/PlatformFlow";
 import { PricingSection } from "@/components/PricingSection";
 import { ReturnSectionTracker } from "@/components/ReturnSectionTracker";
@@ -54,7 +54,9 @@ export function SiteContent() {
                 </div>
               </div>
 
-              <HeroHighlights />
+              <div className={styles.heroVisual}>
+                <PlatformFlow />
+              </div>
             </div>
           </div>
         </section>
@@ -76,9 +78,9 @@ export function SiteContent() {
         <PricingSection />
 
         <section id="contacto" className={styles.ctaBlock}>
-          <div className={styles.cta}>
+          <GrowBand className={styles.cta}>
             <div className={styles.ctaInner}>
-              <div className={styles.ctaCopy} data-reveal>
+              <div className={styles.ctaCopy} data-reveal data-reveal-group="cta">
                 <h2 className={styles.ctaTitle}>{CTA.title}</h2>
                 <p className={styles.ctaLead}>{CTA.lead}</p>
                 <div className={styles.ctaActions}>
@@ -87,11 +89,11 @@ export function SiteContent() {
                   </Link>
                 </div>
               </div>
-              <div className={styles.ctaVisual} data-reveal>
+              <div className={styles.ctaVisual} data-reveal data-reveal-group="cta">
                 <PlatformFlow />
               </div>
             </div>
-          </div>
+          </GrowBand>
 
           <footer className={styles.footer}>
             <div className={styles.footerInner}>
