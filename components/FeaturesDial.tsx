@@ -7,7 +7,7 @@ import { useSectionActive } from "@/lib/useSectionActive";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LuPause, LuPlay } from "react-icons/lu";
 import { type FeatureId, FeatureVisual } from "./FeatureVisuals";
 import { StepSequence } from "./StepVisuals";
@@ -23,6 +23,26 @@ gsap.registerPlugin(useGSAP);
 
 /* Bento slots: which feature goes where (slot order = visual order). */
 const BENTO: FeatureId[] = ["widget", "operadores", "cliente", "orcamentos", "gestao"];
+
+/* Below desktop the CSS moves orçamentos after gestão (FeaturesDial.module.css,
+ * `order: 1`); the demos take their turns in that same visual order. */
+const COMPACT_QUERY = "(max-width: 1023px)";
+const BENTO_COMPACT: FeatureId[] = ["widget", "operadores", "cliente", "gestao", "orcamentos"];
+
+function subscribeCompact(onChange: () => void) {
+  const mq = window.matchMedia(COMPACT_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+/** True below 1024px. Follows live changes; the server render assumes desktop. */
+function useCompactBento() {
+  return useSyncExternalStore(
+    subscribeCompact,
+    () => window.matchMedia(COMPACT_QUERY).matches,
+    () => false,
+  );
+}
 
 /* ——— Wireframe globe geometry (viewBox 0 0 400 400) ——— */
 const R = 170;
@@ -71,6 +91,7 @@ function Globe() {
 export function FeaturesDial() {
   const rootRef = useRef<HTMLElement | null>(null);
   const reduced = usePrefersReducedMotion();
+  const compact = useCompactBento();
   const [paused, setPaused] = useState(false);
   const spinRef = useRef<gsap.core.Tween | null>(null);
   const globeRef = useRef<HTMLDivElement | null>(null);
@@ -176,7 +197,9 @@ export function FeaturesDial() {
             and after any earlier card still playing beside it. */}
         <StepSequence mode="independent">
           <ul className={styles.grid}>
-            {BENTO.map((id, index) => {
+            {BENTO.map((id) => {
+              // Turn order = the order the cards are laid out in
+              const index = (compact ? BENTO_COMPACT : BENTO).indexOf(id);
               const feature = FEATURES.find((f) => f.id === id);
               if (!feature) return null;
               return (

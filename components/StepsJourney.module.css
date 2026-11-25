@@ -74,9 +74,8 @@
 }
 
 .step {
-  flex: 0 1 auto;
-  width: min(38ch, calc((100% - 2.5rem) / 3));
-  max-width: min(38ch, calc((100% - 2.5rem) / 3));
+  /* Three equal columns that fill the stage width */
+  flex: 1 1 0;
   margin: 0;
   padding: 0;
   min-width: 0;
@@ -238,12 +237,5 @@
   .stepBody {
     /* Same height for 1–3 lines so step cards stay aligned */
     min-height: calc(1.55em * 3);
-  }
-}
-
-@media (min-width: 1400px) {
-  .step {
-    width: min(44ch, calc((100% - 2.5rem) / 3));
-    max-width: min(44ch, calc((100% - 2.5rem) / 3));
   }
 }

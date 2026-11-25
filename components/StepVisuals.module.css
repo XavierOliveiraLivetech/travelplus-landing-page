@@ -21,6 +21,13 @@
   overflow-x: clip;
 }
 
+/* Desktop: each card fills its step column */
+@media (min-width: 1024px) {
+  .visual {
+    max-width: none;
+  }
+}
+
 /* Soft brand glow sitting behind each card */
 .visual::before {
   content: "";

@@ -286,7 +286,7 @@ const DEMO_MS: Record<FeatureId, number> = {
   operadores: 3400,
   cliente: 1800,
   orcamentos: 2800,
-  gestao: 4300,
+  gestao: 3600,
 };
 
 export function FeatureVisual({

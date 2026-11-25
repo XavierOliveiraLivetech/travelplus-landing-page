@@ -266,6 +266,73 @@
   }
 }
 
+/* Tablet: a shorter illustration box so the panel sits closer to the copy
+ * (gestão keeps its lattice height) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .card:not([data-slot="gestao"]) {
+    --vis-h: 7.75rem;
+  }
+
+  .card:not([data-slot="gestao"]) .copy {
+    padding-bottom: 0.25rem;
+  }
+
+  /* Cards in a row share one height, so the copy and the illustration trade
+   * room: the illustration takes whatever the copy leaves (never less than
+   * its --vis-h) and centres in it. A short description gives the panel
+   * more air; a long one eats into the space of a small illustration. */
+  .grid .card:not([data-slot="gestao"]) > :last-child {
+    flex: 1 0 var(--vis-h);
+  }
+
+  /* The quote timeline is a single slim row: it needs far less height than
+   * the panels, so its (longer) description can take the room instead */
+  .card[data-slot="orcamentos"] {
+    --vis-h: 4.75rem;
+  }
+}
+
+/* Below desktop, orçamentos and gestão swap places: orçamentos comes last
+ * (phones included, so the order is the same at every size below 1024px) */
+@media (max-width: 1023px) {
+  .card[data-slot="orcamentos"] {
+    order: 1;
+  }
+}
+
+/* Tablets (640–1023px): the module network fills a half-width card well,
+ * while the slim quote timeline sits beside its copy across the full-width
+ * last row (no empty band). */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .card[data-slot="gestao"] {
+    grid-column: auto;
+  }
+
+  .card[data-slot="orcamentos"] {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .grid .card[data-slot="orcamentos"] .copy {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.35rem 0.5rem 1.35rem 1.5rem;
+    text-align: left;
+  }
+
+  .grid .card[data-slot="orcamentos"] .body {
+    margin-inline: 0;
+  }
+
+  .grid .card[data-slot="orcamentos"] > :last-child {
+    flex: 0 0 50%;
+    margin-top: 0;
+  }
+}
+
 /* Desktop: 3 over 2, the whole bento sized to fit one screen */
 @media (min-width: 1024px) {
   .grid {

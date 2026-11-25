@@ -1691,6 +1691,17 @@
   }
 }
 
+/* Tablets (668–1023px): the copy is left-aligned, so a centred demo set up
+   a second, competing axis. The demo now spans the full content rail —
+   left edge on the text's edge, right edge on the header CTA's edge — so
+   the whole hero hangs from one grid. */
+@media (min-width: 668px) and (max-width: 1023px) {
+  .heroVisual {
+    max-width: none;
+    margin-inline: 0;
+  }
+}
+
 /* Landscape phones / small tablets: no vertical room to stack, so the
    demo moves beside the copy (same idea as desktop) */
 @media (max-height: 560px) and (orientation: landscape) and (min-width: 640px) and (max-width: 1023px) {

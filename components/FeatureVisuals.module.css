@@ -108,14 +108,13 @@
   overflow: visible;
 }
 
-/* Grey spoke left behind by each orange link (drawn at the same pace). Both
- * are pulled back into the hub with their module, so the finished frame has
- * no lines left */
+/* Grey spoke under each orange link. Finished frame: both drawn, every
+ * module wired to the hub (the demo grows them out with the modules) */
 .spoke {
   stroke: var(--line);
   stroke-width: 1.2;
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  stroke-dashoffset: 0;
 }
 
 /* The orange link that runs out from the hub to a module */
@@ -124,7 +123,7 @@
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  stroke-dashoffset: 0;
 }
 
 .node,
@@ -137,10 +136,10 @@
   transform: translate(-50%, -50%);
 }
 
-/* Finished frame: the modules have been pulled into the hub (gone); the
- * hub's circle has dissolved and only the enlarged, glowing logo remains */
+/* Finished frame: the modules sit around the hub, wired to it and ringed
+ * in orange */
 .node {
-  opacity: 0;
+  border-color: var(--link);
   width: 12cqw;
   height: 12cqw;
   background: var(--ui-violet-soft);
@@ -157,12 +156,12 @@
   width: 38cqw;
   height: 38cqw;
   border-color: transparent;
-  background: transparent;
+  background: var(--branco);
   transform: translate(-50%, -50%);
 }
 
 /* The hub's outline is this SVG circle, not the border, so it can be drawn
- * as a line; gone in the finished frame (only the logo remains) */
+ * as a line while the modules first appear */
 .hubRing {
   position: absolute;
   inset: 0;
@@ -178,10 +177,10 @@
   stroke: var(--line);
   stroke-width: 2.2;
   stroke-dasharray: 1;
-  stroke-dashoffset: 1;
+  stroke-dashoffset: 0;
 }
 
-/* One orange ring that bursts out of the hub once the modules have landed */
+/* One orange ring that bursts out of the hub as it absorbs the modules */
 .hub::after {
   content: "";
   position: absolute;
@@ -196,7 +195,6 @@
   display: block;
   width: 85%;
   height: auto;
-  filter: drop-shadow(0 0.4rem 0.9rem var(--glow));
 }
 
 /* ——— Mini product UIs (operadores, orçamentos, cliente) ——— */
@@ -572,13 +570,15 @@
     opacity: 0;
   }
 
-  /* …the bare logo, its circle only drawn just before the links set off */
-  .visual:not([data-running]) .hub {
-    transform: translate(-50%, -50%);
+  .visual:not([data-running]) .spoke,
+  .visual:not([data-running]) .spokeLit,
+  .visual:not([data-running]) .hubRing circle {
+    stroke-dashoffset: 1;
   }
 
-  .visual:not([data-running]) .hubLogo {
-    filter: none;
+  /* …the bare logo, its circle only drawn as the modules appear */
+  .visual:not([data-running]) .hub {
+    background: transparent;
   }
 
   /* 01 · Widget (3s): type the destination, then click "Pesquisar" */
@@ -630,53 +630,48 @@
     animation-delay: calc(0.2s + var(--stage) * 0.75s);
   }
 
-  /* 05 · Back office (4.3s):
-   * 1. the bare logo is there from the start; while the module circles pop
-   *    in one by one, the logo's circle is drawn round it like a line;
-   * 2. an orange link grows out of the logo to each module, each at its own
-   *    pace, leaving a grey spoke behind and ringing the module on arrival;
-   * 3. the modules are pulled into the logo, their lines shrinking with them
-   *    (same delay, duration and easing, so each line ends at its module);
-   * 4. the logo's circle dissolves (the logo keeps its size), a ring bursts out and
-   *    the logo is left glowing. Everything has finished by 4.2s. */
+  /* 05 · Back office (3.6s):
+   * 1. the bare logo is there from the start; the module circles pop in one
+   *    by one, loose (no lines, no circle round the logo yet);
+   * 2. the modules are pulled into the logo;
+   * 3. the logo takes the hit: a quick swell and a glow;
+   * 4. the modules are thrown back out, now wired: each orange link grows
+   *    with its module (same delay, duration and easing, so the line's tip
+   *    stays on the module) and the module lands ringed in orange, while
+   *    the logo's circle is drawn round it and an orange ring bursts out. */
   .visual[data-running] .node {
     animation:
       nodeIn 0.45s var(--ease-out) calc(var(--i) * 0.2s) both,
-      ringOn 0.25s var(--ease-out)
-        calc(1.1s + var(--j) * 0.3s + 0.9s + var(--s) * 0.5s) forwards,
-      nodeToHub 0.55s cubic-bezier(0.55, 0, 1, 0.45)
-        calc(3s + var(--j) * 0.1s) forwards;
+      nodeToHub 0.5s cubic-bezier(0.55, 0, 1, 0.45)
+        calc(1.5s + var(--j) * 0.1s) forwards,
+      nodeOut 0.7s cubic-bezier(0.16, 1, 0.3, 1)
+        calc(2.6s + var(--j) * 0.12s) forwards;
   }
 
   .visual[data-running] .hub {
     animation:
-      circleIn 0.3s var(--ease-out) 0.8s both,
-      hubOn 0.3s var(--ease-out) 3.4s forwards;
+      circleIn 0.3s var(--ease-out) 2.6s both,
+      hubPulse 0.55s var(--ease-out) 2.1s;
   }
 
-  /* The circle is drawn round the logo while the modules pop in, and fades
-   * once the modules have landed */
+  /* The logo stays bare until it expels the modules: only then is its
+   * circle drawn round it, alongside the links */
   .visual[data-running] .hubRing circle {
-    animation:
-      ringDraw 1.05s var(--ease-in-out) 0.05s both,
-      ringFade 0.28s var(--ease-out) 3.4s forwards;
+    animation: ringDraw 0.7s var(--ease-in-out) 2.6s both;
   }
 
   .visual[data-running] .hub::after {
-    animation: ringBurst 0.8s var(--ease-out) 3.45s forwards;
+    animation: ringBurst 0.8s var(--ease-out) 2.6s forwards;
   }
 
   .visual[data-running] .hubLogo {
-    animation: logoGlow 0.6s var(--ease-out) 3.6s both;
+    animation: logoFlash 0.9s var(--ease-out) 2.1s;
   }
 
   .visual[data-running] .spoke,
   .visual[data-running] .spokeLit {
-    animation:
-      spokeOut calc(0.9s + var(--s) * 0.5s) var(--ease-in-out)
-        calc(1.1s + var(--j) * 0.3s) both,
-      spokeIn 0.55s cubic-bezier(0.55, 0, 1, 0.45)
-        calc(3s + var(--j) * 0.1s) forwards;
+    animation: spokeOut 0.7s cubic-bezier(0.16, 1, 0.3, 1)
+      calc(2.6s + var(--j) * 0.12s) both;
   }
 }
 
@@ -851,35 +846,43 @@
   }
 }
 
+/* Pops in loose: grey ring, not wired to the hub yet */
 @keyframes nodeIn {
   from {
     opacity: 0;
+    border-color: var(--line);
     transform: translate(-50%, -50%) scale(0.6);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
-
-@keyframes ringOn {
-  from {
     border-color: var(--line);
-  }
-  to {
-    border-color: var(--link);
+    transform: translate(-50%, -50%);
   }
 }
 
 /* Pulled into the hub: slides onto its centre (--dx/--dy, in cqw) and
- * shrinks away under it */
+ * shrinks away under it — still loose, so still grey */
 @keyframes nodeToHub {
   from {
     opacity: 1;
-    border-color: var(--link);
+    border-color: var(--line);
     transform: translate(-50%, -50%);
   }
   to {
+    opacity: 0;
+    border-color: var(--line);
+    transform: translate(
+        calc(-50% + var(--dx) * 1cqw),
+        calc(-50% + var(--dy) * 1cqw)
+      )
+      scale(0.4);
+  }
+}
+
+/* Thrown back out of the hub to its place, now wired (orange ring); the
+ * link (spokeOut) grows alongside with the same timing */
+@keyframes nodeOut {
+  0% {
     opacity: 0;
     border-color: var(--link);
     transform: translate(
@@ -887,6 +890,25 @@
         calc(-50% + var(--dy) * 1cqw)
       )
       scale(0.4);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    border-color: var(--link);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* The logo swells as it absorbs the modules, then settles */
+@keyframes hubPulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  35% {
+    transform: translate(-50%, -50%) scale(1.14);
   }
 }
 
@@ -914,25 +936,6 @@
   }
 }
 
-@keyframes ringFade {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-/* Every module has landed: the hub's circle dissolves, leaving the logo */
-@keyframes hubOn {
-  from {
-    background: var(--branco);
-  }
-  to {
-    background: transparent;
-  }
-}
-
 @keyframes ringBurst {
   from {
     opacity: 0.8;
@@ -944,32 +947,25 @@
   }
 }
 
-@keyframes logoGlow {
-  from {
+/* A flash of glow on the logo during its swell */
+@keyframes logoFlash {
+  0%,
+  100% {
     filter: drop-shadow(0 0 0 transparent);
   }
-  to {
+  35% {
     filter: drop-shadow(0 0.4rem 0.9rem var(--glow));
   }
 }
 
 /* stroke-dasharray 1 on a pathLength-1 line: offset 1 → 0 grows the link
- * out of the hub, 0 → 1 pulls it back in */
+ * out of the hub */
 @keyframes spokeOut {
   from {
     stroke-dashoffset: 1;
   }
   to {
     stroke-dashoffset: 0;
-  }
-}
-
-@keyframes spokeIn {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: 1;
   }
 }
 
@@ -992,6 +988,25 @@
     inset: auto;
     padding: 0.35rem 1.35rem 1.35rem;
     container-type: normal;
+  }
+}
+
+/* Tablet: less air above the panel so it sits close to the copy */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .visual:not([data-visual="gestao"]) .frameArea {
+    padding-block: 0.25rem 0.75rem;
+  }
+}
+
+/* Tablets: the quote timeline has the full-width card's right half to
+ * itself (FeaturesDial), so it spreads across it instead of its 16rem cap */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .visual[data-visual="orcamentos"] .stepper {
+    width: 100%;
+  }
+
+  .visual[data-visual="orcamentos"] .frameArea {
+    padding-inline: 0.5rem 1.5rem;
   }
 }
 
