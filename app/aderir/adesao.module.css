@@ -1,0 +1,996 @@
+/*
+ * Adesão em passos (AdesaoWizard).
+ *
+ * Layout: one white card holding two inset panels. On the left a brand
+ * purple rail with the page title and the steps (marker, then label, joined
+ * by short connectors); on the right a white panel with the current slide.
+ * Radius, borders, shadows, buttons, badges and the chosen-card colours
+ * follow the landing page (site.module.css: pricing tickets, primaryButton,
+ * pricingButtonSecondary). Under 900px the rail sits on top and
+ * shows "Passo X de 7" with a progress bar instead of the step list.
+ */
+
+.shell {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 68rem;
+  margin-inline: auto;
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--branco);
+  border: 1px solid var(--linha);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--brand-blue) 10%, transparent);
+}
+
+/* ---------- Rail ---------- */
+
+.rail {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--brand-blue);
+  color: var(--branco);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-20);
+  color: var(--branco);
+}
+
+.mobileProgress {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.progressText {
+  margin: 0;
+  font-size: var(--font-14);
+  color: rgb(255 255 255 / 0.72);
+}
+
+.progressText strong {
+  color: var(--branco);
+  font-weight: 600;
+}
+
+.progressBar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  overflow: hidden;
+}
+
+.progressBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand-orange);
+  transform-origin: left center;
+  transition: transform 320ms var(--ease-out);
+}
+
+/* ---------- Step list ---------- */
+
+.steps {
+  --dot: 2rem;
+  --gap: 2.25rem;
+  display: none;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+}
+
+/* Short connector between this marker and the next one */
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--dot) / 2 - 1px);
+  top: calc(50% + var(--dot) / 2 + 0.375rem);
+  height: calc(var(--gap) + 2.75rem - var(--dot) - 0.75rem);
+  width: 2px;
+  border-radius: 1px;
+  background: rgb(255 255 255 / 0.2);
+  transition: background var(--motion-base) var(--ease-out);
+}
+
+.stepDone:not(:last-child)::after {
+  background: var(--brand-orange);
+}
+
+.stepButton {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.stepButton {
+  cursor: pointer;
+}
+
+button.stepButton:hover .stepLabel {
+  color: var(--branco);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+button.stepButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.stepDot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.12);
+  color: rgb(255 255 255 / 0.75);
+  font-size: var(--font-14);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+
+.stepDot svg {
+  font-size: 1rem;
+  stroke-width: 3;
+}
+
+.stepLabel {
+  font-size: var(--font-16);
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.72);
+  transition: color var(--motion-fast) ease;
+}
+
+.stepDone .stepDot {
+  background: var(--brand-orange);
+  color: var(--branco);
+}
+
+.stepDone .stepLabel {
+  color: rgb(255 255 255 / 0.9);
+}
+
+.stepCurrent .stepDot {
+  background: var(--branco);
+  color: var(--brand-blue);
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.18);
+}
+
+.stepCurrent .stepLabel {
+  font-weight: 700;
+  color: var(--branco);
+}
+
+/* ---------- Panel ---------- */
+
+.panel {
+  display: flex;
+  min-width: 0;
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--branco);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+.slide {
+  display: grid;
+  gap: 1.25rem;
+  align-content: start;
+  animation: slide-in-next 0.32s var(--ease-out) both;
+}
+
+.slideBack {
+  animation-name: slide-in-prev;
+}
+
+@keyframes slide-in-next {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+}
+
+@keyframes slide-in-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+}
+
+.slideHead {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.slideTitle {
+  margin: 0;
+  font-size: var(--font-20);
+  color: var(--brand-blue);
+  text-wrap: balance;
+}
+
+/* Final screen keeps a full-size heading */
+.doneTitle {
+  margin: 0;
+  font-size: clamp(1.65rem, 3.2vw, 2.35rem);
+  color: var(--brand-blue);
+  text-wrap: balance;
+}
+
+.doneTitle:focus {
+  outline: none;
+}
+
+.slideTitle:focus {
+  outline: none;
+}
+
+.slideLead {
+  margin: 0;
+  max-width: 52ch;
+  font-size: var(--font-14);
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.slideLead strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---------- Choice cards ---------- */
+
+.options {
+  display: grid;
+  gap: 0.625rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.option {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.875rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--linha);
+  border-radius: var(--radius-lg);
+  background: var(--branco);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-base) var(--ease-out),
+    background var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.option:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--brand-blue) 16%, transparent);
+}
+
+.option:active {
+  transform: scale(0.99);
+}
+
+.option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option:has(input:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.optionActive,
+.optionActive:hover {
+  border-color: var(--brand-blue);
+  /* the site's light purple tint (product demo and "Como funciona" cards) */
+  background: var(--ui-violet-soft);
+  box-shadow: inset 0 0 0 1px var(--brand-blue);
+}
+
+.optionCompact {
+  align-items: center;
+}
+
+.radio {
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--ink-muted) 60%, var(--branco));
+  background: var(--branco);
+  transition:
+    border-color var(--motion-base) var(--ease-out),
+    background var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out);
+}
+
+.optionCompact .radio {
+  margin-top: 0;
+}
+
+.optionActive .radio {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+  box-shadow: inset 0 0 0 3.5px var(--branco);
+}
+
+/* Square check (payment methods) */
+.checkbox {
+  border-radius: var(--radius-sm);
+}
+
+.optionActive .checkbox {
+  box-shadow: none;
+}
+
+.optionActive .checkbox::after {
+  content: "";
+  width: 0.3rem;
+  height: 0.6rem;
+  margin-top: -0.15rem;
+  border: solid var(--branco);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.optionBody {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.optionName {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.5rem;
+  font-size: var(--font-16);
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.optionText {
+  font-size: var(--font-14);
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.badge {
+  border-radius: var(--radius-sm);
+  background: var(--brand-orange);
+  color: var(--branco);
+  padding: 0.25rem 0.55rem;
+  font-size: var(--font-12);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* "Mais escolhido" and "Poupa X%": a quieter hint, not a call-out */
+.badgeSoft {
+  background: var(--ui-orange-soft);
+  color: var(--brand-orange-dark);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Slide down / up: animate the row from 0fr to 1fr so height follows content. */
+.includesWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  /* cancel the parent's grid gap while collapsed */
+  margin-top: -0.25rem;
+  transition: grid-template-rows 0.32s var(--ease-out);
+}
+
+.includesOpen {
+  grid-template-rows: 1fr;
+}
+
+.includesClip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.includesStack {
+  display: grid;
+}
+
+.includesStack > * {
+  grid-area: 1 / 1;
+}
+
+/* Other plans' lists: invisible, only there to reserve the tallest height */
+.includesSizer {
+  visibility: hidden;
+}
+
+.includes {
+  display: grid;
+  gap: 0.375rem 1.25rem;
+  margin: 0;
+  padding: 0.875rem 0 0;
+  list-style: none;
+  opacity: 0;
+  transform: translateY(-0.375rem);
+  transition:
+    opacity 0.2s ease,
+    transform 0.32s var(--ease-out);
+}
+
+.includesOpen .includes {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.06s;
+}
+
+.includes li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--font-14);
+  color: var(--ink-soft);
+}
+
+.includes svg {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--ui-success);
+}
+
+.optionPrice {
+  display: grid;
+  justify-items: end;
+  /* One width for every card ("Sob consulta" included), so the text column
+     and the reserved feature list wrap the same in all of them. */
+  min-width: 6rem;
+  white-space: nowrap;
+}
+
+.optionPrice strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: var(--font-20);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.optionPrice small {
+  font-size: var(--font-12);
+  color: var(--ink-muted);
+}
+
+.optionPriceNote {
+  font-size: var(--font-14);
+  color: var(--ink-muted);
+}
+
+.optionIcon {
+  color: var(--ink-muted);
+  font-size: 1.125rem;
+}
+
+/* Payment tiles: icon + check on top, text below */
+.optionTile {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon check"
+    "body body";
+  gap: 0.875rem;
+}
+
+.optionTile .tileIcon {
+  grid-area: icon;
+}
+
+.optionTile .radio {
+  grid-area: check;
+  margin-top: 0;
+}
+
+.optionTile .optionBody {
+  grid-area: body;
+}
+
+.tileIcon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: var(--ui-orange-soft);
+  color: var(--brand-orange);
+  font-size: 1.25rem;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    color var(--motion-base) var(--ease-out);
+}
+
+.optionActive .tileIcon {
+  background: var(--brand-blue);
+  color: var(--branco);
+}
+
+/* ---------- Text fields ---------- */
+
+.field {
+  display: grid;
+  gap: 0.375rem;
+}
+
+/* Floating label: sits inside the empty field, moves onto its border once
+   the field has focus or a value (the input carries placeholder=" "). */
+.float {
+  position: relative;
+  max-width: 16rem;
+}
+
+.float label {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  padding: 0 0.25rem;
+  transform: translateY(-50%);
+  font-size: var(--font-16);
+  color: var(--ink-muted);
+  pointer-events: none;
+  transition:
+    top var(--motion-fast) var(--ease-out),
+    font-size var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) ease;
+}
+
+.float input:focus + label,
+.float input:not(:placeholder-shown) + label {
+  top: 0;
+  font-size: var(--font-12);
+  font-weight: 600;
+  color: var(--ink-soft);
+  /* split background so the label "cuts" the border cleanly */
+  background: var(--branco);
+}
+
+.float input:focus + label {
+  color: var(--brand-orange-dark);
+}
+
+.float input[aria-invalid="true"] + label {
+  color: #b42318;
+}
+
+.field input {
+  width: 100%;
+  height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid var(--linha);
+  border-radius: var(--radius-sm);
+  background: var(--branco);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--font-16);
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--motion-base) var(--ease-out),
+    outline-color var(--motion-base) var(--ease-out);
+}
+
+.field input:hover {
+  border-color: color-mix(in srgb, var(--brand-blue) 35%, var(--linha));
+}
+
+.field input:focus {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 45%, transparent);
+  outline-offset: 1px;
+  border-color: var(--brand-orange);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: #b42318;
+}
+
+.field input[aria-invalid="true"]:focus {
+  outline-color: color-mix(in srgb, #b42318 40%, transparent);
+}
+
+.field .inputCode {
+  height: 3.5rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: 0.5em;
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: var(--font-12);
+  color: var(--ink-muted);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: var(--font-14);
+  font-weight: 500;
+  color: #b42318;
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  margin-top: -0.5rem;
+}
+
+.textButton {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--font-14);
+  font-weight: 600;
+  color: var(--brand-blue);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--brand-blue) 35%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) ease,
+    text-decoration-color var(--motion-fast) ease;
+}
+
+.textButton:hover:not(:disabled) {
+  color: var(--brand-orange);
+  text-decoration-color: currentColor;
+}
+
+.textButton:disabled {
+  color: var(--ink-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+.notice {
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--ui-success-soft);
+  color: #136c4a;
+  padding: 0.75rem 1rem;
+  font-size: var(--font-14);
+}
+
+/* ---------- Actions ---------- */
+
+/* "Voltar" as quiet text on the left, a pill "Continuar" on the right. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.prev,
+.next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.875rem 1.35rem;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--font-14);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    color var(--motion-base) var(--ease-out),
+    border-color var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.prev {
+  border: 1px solid var(--linha);
+  background: var(--branco);
+  color: var(--brand-blue);
+}
+
+.next {
+  margin-left: auto;
+  /* transparent border keeps it the same height as "Voltar" */
+  border: 1px solid transparent;
+  background: var(--brand-orange);
+  color: var(--branco);
+}
+
+.next svg {
+  flex: none;
+  font-size: 1rem;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.prev:hover:not(:disabled) {
+  border-color: var(--brand-blue);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--brand-blue) 12%, transparent);
+}
+
+.next:hover:not(:disabled) {
+  background: var(--brand-orange-dark);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-orange) 32%, transparent);
+}
+
+.next:hover:not(:disabled) svg {
+  transform: translateX(3px);
+}
+
+.prev:active:not(:disabled),
+.next:active:not(:disabled) {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: none;
+}
+
+.prev:focus-visible,
+.next:focus-visible,
+.primary:focus-visible,
+.textButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange) 70%, transparent);
+  outline-offset: 3px;
+}
+
+.prev:disabled,
+.next:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Final screen: the one filled button, "Entrar na plataforma". */
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.875rem 1.35rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--brand-orange);
+  color: var(--branco);
+  font-size: var(--font-14);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    background var(--motion-base) var(--ease-out),
+    box-shadow var(--motion-base) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
+}
+
+.primary svg {
+  flex: none;
+  font-size: 1.125rem;
+}
+
+.primary:hover {
+  background: var(--brand-orange-dark);
+  transform: scale(var(--btn-hover-scale));
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-orange) 32%, transparent);
+}
+
+.primary:active {
+  transform: scale(var(--btn-press-scale));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand-orange) 22%, transparent);
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Done ---------- */
+
+.doneSlide {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding-block: 1rem;
+  text-align: center;
+}
+
+.doneSlide .slideLead {
+  max-width: 40ch;
+}
+
+.doneIcon {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: var(--ui-orange-soft);
+  color: var(--brand-orange);
+  font-size: 1.75rem;
+  animation: pop 0.4s var(--ease-out) both;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+.recap {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0.5rem 0;
+  padding: 1.125rem 1.25rem;
+  border: 1px solid var(--linha);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.recap dt {
+  font-size: var(--font-12);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.recap dd {
+  margin: 0.2rem 0 0;
+  font-size: var(--font-16);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ---------- Utilities ---------- */
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Breakpoints ---------- */
+
+@media (min-width: 600px) {
+  .includes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .optionsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .shell {
+    grid-template-columns: 17rem minmax(0, 1fr);
+    min-height: 40rem;
+    padding: 0.625rem;
+    gap: 0.625rem;
+  }
+
+  .rail {
+    gap: 2.5rem;
+    padding: 2.5rem 2rem;
+  }
+
+  .title {
+    font-size: 1.375rem;
+  }
+
+  .mobileProgress {
+    display: none;
+  }
+
+  .steps {
+    display: grid;
+  }
+
+  .panel {
+    padding: 2.5rem 3rem 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide,
+  .slideBack,
+  .doneIcon {
+    animation: none;
+  }
+
+  .spinner {
+    animation-duration: 2.4s;
+  }
+
+  .progressBar span,
+  .stepDot,
+  .stepLabel,
+  .step::after,
+  .float label,
+  .option,
+  .radio,
+  .includesWrap,
+  .includes,
+  .tileIcon,
+  .primary,
+  .prev,
+  .next,
+  .next svg {
+    transition: none;
+  }
+
+  .option:hover,
+  .option:active,
+  .primary:hover,
+  .primary:active,
+  .prev:active:not(:disabled),
+  .next:active:not(:disabled) {
+    transform: none;
+  }
+}

@@ -144,6 +144,12 @@ html {
    * force overflow-y to auto — that would break position:sticky descendants.
    */
   overflow-x: clip;
+  /*
+   * Always reserve the scrollbar's width, so content that changes height
+   * (e.g. picking another plan in /aderir) never shifts sideways when the
+   * scrollbar appears or disappears.
+   */
+  scrollbar-gutter: stable;
 }
 
 @media (prefers-reduced-motion: no-preference) {

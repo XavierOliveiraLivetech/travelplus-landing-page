@@ -1,5 +1,7 @@
 export const CONTACT_EMAIL = "info@livetech.pt";
 export const SALES_EMAIL = "info@livetech.pt";
+/** Plataforma TravelPlus — destino do botão final da adesão. */
+export const PLATFORM_URL = "https://app.travelplus.pt";
 
 export function formatPlanoPrice(value: number | null): string {
   if (value === null) {
